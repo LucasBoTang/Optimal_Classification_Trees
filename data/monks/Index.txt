@@ -1,0 +1,13 @@
+Index of monks-problems
+
+02 Dec 1996      405 Index
+29 Jun 1993     2852 monks.names
+12 Feb 1993    10260 monks-1.test
+12 Feb 1993     2947 monks-1.train
+12 Feb 1993    10260 monks-2.test
+12 Feb 1993     4013 monks-2.train
+12 Feb 1993    10260 monks-3.test
+12 Feb 1993     2886 monks-3.train
+12 Feb 1993    57073 thrun.comparison.dat
+12 Feb 1993   588760 thrun.comparison.ps.Z
+12 Feb 1993    10227 update
