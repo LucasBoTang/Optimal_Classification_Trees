@@ -174,7 +174,8 @@ class MaxFlow_OCT():
             g_val = model.cbGetSolution(model._g)
             t_val = model.cbGetSolution(model._t)
 
-            arrival = []
+            miss = []
+            arr = []
 
             for i in model._I:
                 S, dir = [], []
@@ -200,8 +201,10 @@ class MaxFlow_OCT():
 
                 S.append(n)
 
-                if np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) >= 0.999:
-                    arrival.append(i)
+                if np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) <= 0.1:
+                    miss.append(i)
+                else:
+                    arr.append(i)
 
                 if g_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
                     if n in model._B:
@@ -226,9 +229,11 @@ class MaxFlow_OCT():
                                                  if model._Y[i] == k)
                                      )
 
-            if t_val >= len(arrival):
-                for c in combinations(arrival, model._N):
-                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c))
+            rhs = model._N - len(miss)
+            if t_val >= rhs:
+
+                for c in combinations(arr, rhs):
+                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c + miss))
 
     def fit(self, x, y):
         '''
@@ -432,7 +437,7 @@ class MaxFlow_OCT():
         self.g = self.master.addVars(g_idx, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
         p_idx = [n for n in self.B + self.T]
         self.p = self.master.addVars(p_idx, name='P', vtype=gp.GRB.BINARY)
-        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
+        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = N, lb = 0)
 
         # add constraints
         self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
