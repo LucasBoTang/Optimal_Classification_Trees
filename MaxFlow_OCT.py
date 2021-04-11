@@ -2,6 +2,7 @@ import numpy as np
 import gurobipy as gp
 from dataset import dataloader
 import pandas as pd
+from itertools import combinations
 
 class MaxFlow_OCT():
 
@@ -117,7 +118,7 @@ class MaxFlow_OCT():
                                      )
 
     @staticmethod
-    def stable_min_cut(model, where):
+    def stable_robust_min_cut(model, where):
         if where == gp.GRB.Callback.MIPSOL:
             b_val = model.cbGetSolution(model._b)
             w_val = model.cbGetSolution(model._w)
@@ -163,6 +164,71 @@ class MaxFlow_OCT():
                                                  for j in S for k in model._K
                                                  if model._Y[i] == k)
                                      )
+
+    @staticmethod
+    def stable_CP_min_cut(model, where):
+        if where == gp.GRB.Callback.MIPSOL:
+            b_val = model.cbGetSolution(model._b)
+            w_val = model.cbGetSolution(model._w)
+            p_val = model.cbGetSolution(model._p)
+            g_val = model.cbGetSolution(model._g)
+            t_val = model.cbGetSolution(model._t)
+
+            arrival = []
+
+            for i in model._I:
+                S, dir = [], []
+                n = 0
+
+                while (p_val[n] <= 0.9):
+                    S.append(n)
+                    if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
+                        n = 2 * n + 1
+                        dir.append(0)
+                    elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
+                        n = 2 * n + 2
+                        dir.append(1)
+                    else:
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+
+                S.append(n)
+
+                if np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) >= 0.999:
+                    arrival.append(i)
+
+                if g_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
+                    if n in model._B:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i,f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._b[n, f] for f in model._F) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+                    else:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+
+            if t_val >= len(arrival):
+                for c in combinations(arrival, model._N):
+                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c))
 
     def fit(self, x, y):
         '''
@@ -257,7 +323,7 @@ class MaxFlow_OCT():
         # self.master.Params.outputFlag = 1
         # elf.master.display()
 
-    def stable_fit(self, x, y, N):
+    def stable_fit_robust(self, x, y, N):
         '''
 
         :param x:
@@ -331,7 +397,7 @@ class MaxFlow_OCT():
         self.master._u = self.u
         self.master._theta = self.theta
 
-        self.master.optimize(self.stable_min_cut)
+        self.master.optimize(self.stable_robust_min_cut)
 
         # elf.master.display()
         # print(self.master.printAttr('X'))
@@ -339,6 +405,82 @@ class MaxFlow_OCT():
         # print(self.master.ObjVal)
         # self.master.Params.outputFlag = 1
         # self.master.display()
+
+    def stable_fit_CP(self, x, y, N):
+
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y) + 1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = 0
+
+        # add decision variables
+        b_idx = [(n, f) for n in self.B for f in self.F]
+        self.b = self.master.addVars(b_idx, name='b', vtype=gp.GRB.BINARY)
+        w_idx = [(n, k) for n in self.B + self.T for k in self.K]
+        self.w = self.master.addVars(w_idx, name='w', vtype=gp.GRB.BINARY)
+        g_idx = [i for i in self.I]
+        self.g = self.master.addVars(g_idx, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        p_idx = [n for n in self.B + self.T]
+        self.p = self.master.addVars(p_idx, name='P', vtype=gp.GRB.BINARY)
+        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name='branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               , name='label_assignment')
+
+        # set objective function
+        obj = (1 - self.lambda_) * self.t - \
+              self.lambda_ * gp.quicksum(self.b[n, f] for (n, f) in b_idx)
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+        self.master._N = N
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._g = self.g
+        self.master._t = self.t
+        self.master.optimize(self.min_cut)
+
+        # self.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # elf.master.display()
 
     def predict(self, x):
 
@@ -375,7 +517,8 @@ if __name__ == '__main__':
 
     for _ in range(repeat):
         x_train, x_test, y_train, y_test = dataloader('monk2')
-        N = int(len(y_train) * 0.6)
+        N = int(len(y_train) * 0.7)
+        print('Lmabda: {}'.format(args['lambda']))
         print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
 
         model = MaxFlow_OCT(args)
@@ -389,8 +532,17 @@ if __name__ == '__main__':
 
         y1 = model.predict(x_train)
 
+        # model = MaxFlow_OCT(args)
+        # model.stable_fit_robust(x_train, y_train, N = N)
+        # s_oct_train = model.eval(x_train, y_train)
+        # s_oct_test = model.eval(x_test, y_test)
+        # print('SOCT Train: {}, Test: {}'.format(s_oct_train, s_oct_test))
+        # print(model.master.ObjVal, model.master.ObjVal / N)
+        # print(model.branches)
+        # print(model.labels)
+
         model = MaxFlow_OCT(args)
-        model.stable_fit(x_train, y_train, N = N)
+        model.stable_fit_CP(x_train, y_train, N=N)
         s_oct_train = model.eval(x_train, y_train)
         s_oct_test = model.eval(x_test, y_test)
         print('SOCT Train: {}, Test: {}'.format(s_oct_train, s_oct_test))
