@@ -230,10 +230,15 @@ class MaxFlow_OCT():
                                      )
 
             rhs = model._N - len(miss)
-            if t_val >= rhs:
-
-                for c in combinations(arr, rhs):
-                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c + miss))
+            if t_val > rhs:
+                if rhs > 0:
+                    for c in combinations(arr, rhs):
+                        model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c) + gp.quicksum(model._g[i] for i in miss))
+                        break
+                else:
+                    for c in combinations(miss, model._N):
+                        model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c))
+                        break
 
     def fit(self, x, y):
         '''
@@ -257,6 +262,7 @@ class MaxFlow_OCT():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = 3600
 
         # add decision variables
         b_idx = [(n, f) for n in self.B for f in self.F]
@@ -350,6 +356,7 @@ class MaxFlow_OCT():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = 3600
 
         # add decision variables
         b_idx = [(n, f) for n in self.B for f in self.F]
@@ -427,6 +434,7 @@ class MaxFlow_OCT():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = 7200
 
         # add decision variables
         b_idx = [(n, f) for n in self.B for f in self.F]
@@ -437,7 +445,7 @@ class MaxFlow_OCT():
         self.g = self.master.addVars(g_idx, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
         p_idx = [n for n in self.B + self.T]
         self.p = self.master.addVars(p_idx, name='P', vtype=gp.GRB.BINARY)
-        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = N, lb = 0)
+        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
 
         # add constraints
         self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
@@ -478,7 +486,7 @@ class MaxFlow_OCT():
         self.master._p = self.p
         self.master._g = self.g
         self.master._t = self.t
-        self.master.optimize(self.min_cut)
+        self.master.optimize(self.stable_CP_min_cut)
 
         # self.master.display()
         # print(self.master.printAttr('X'))
@@ -512,17 +520,17 @@ class MaxFlow_OCT():
 
 if __name__ == '__main__':
 
-    args = {'max_depth': 2, 'lambda': 0}
+    args = {'max_depth': 3, 'lambda': 0}
     # x = np.array([[1,0,0], [1,0,0], [0,1,0], [1,1,1], [1,0,1]])
     # y = np.array([0,0,1,0,0])
     # x_test = np.array([[0,0,0], [1,1,0]])
 
     records = []
-    repeat = 10
+    repeat = 1
 
     for _ in range(repeat):
         x_train, x_test, y_train, y_test = dataloader('monk2')
-        N = int(len(y_train) * 0.7)
+        N = int(len(y_train) * 0.6)
         print('Lmabda: {}'.format(args['lambda']))
         print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
 
