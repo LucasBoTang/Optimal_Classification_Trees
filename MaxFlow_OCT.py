@@ -176,6 +176,7 @@ class MaxFlow_OCT():
 
             miss = []
             arr = []
+            counter = 0
 
             for i in model._I:
                 S, dir = [], []
@@ -207,6 +208,7 @@ class MaxFlow_OCT():
                     arr.append(i)
 
                 if g_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
+                    counter += 1
                     if n in model._B:
                         model.cbLazy(model._g[i] <=
                                      gp.quicksum(model._b[val, f]
@@ -230,15 +232,14 @@ class MaxFlow_OCT():
                                      )
 
             rhs = model._N - len(miss)
-            if t_val > rhs:
+            if t_val > rhs and counter == 0:
                 if rhs > 0:
-                    for c in combinations(arr, rhs):
-                        model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c) + gp.quicksum(model._g[i] for i in miss))
-                        break
+                    choice = np.random.choice(arr, rhs, replace = False)
+                    model.cbLazy(
+                        model._t <= gp.quicksum(model._g[i] for i in choice) + gp.quicksum(model._g[i] for i in miss))
                 else:
-                    for c in combinations(miss, model._N):
-                        model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in c))
-                        break
+                    choice = np.random.choice(miss, model._N, replace=False)
+                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in choice))
 
     def fit(self, x, y):
         '''
@@ -520,17 +521,17 @@ class MaxFlow_OCT():
 
 if __name__ == '__main__':
 
-    args = {'max_depth': 3, 'lambda': 0}
+    args = {'max_depth': 2, 'lambda': 0}
     # x = np.array([[1,0,0], [1,0,0], [0,1,0], [1,1,1], [1,0,1]])
     # y = np.array([0,0,1,0,0])
     # x_test = np.array([[0,0,0], [1,1,0]])
 
     records = []
-    repeat = 1
+    repeat = 10
 
     for _ in range(repeat):
         x_train, x_test, y_train, y_test = dataloader('monk2')
-        N = int(len(y_train) * 0.6)
+        N = int(len(y_train) * 0.7)
         print('Lmabda: {}'.format(args['lambda']))
         print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
 
