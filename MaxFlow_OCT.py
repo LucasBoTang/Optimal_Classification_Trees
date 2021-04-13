@@ -4,6 +4,32 @@ from dataset import dataloader
 import pandas as pd
 from itertools import combinations
 
+
+class naive_model():
+    def __init__(self):
+        pass
+
+    def fit(self, x, y):
+        n = len(y)
+        y = np.array(y)
+        n0 = (y == 0).sum()
+        n1 = (y == 1).sum()
+        if n0 >= n1:
+            self.most = 0
+        else:
+            self.most = 1
+
+    def predict(self, x):
+        n = len(x)
+        return np.ones(n) * self.most
+
+    def score(self, x, y):
+        pred = self.predict(x)
+        y = np.array(y)
+        n = len(y)
+
+        return np.sum(pred == y) / n
+
 class MaxFlow_OCT():
 
     def __init__(self, args):
@@ -263,7 +289,7 @@ class MaxFlow_OCT():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = 3600
+        self.master.Params.timeLimit = 1200
 
         # add decision variables
         b_idx = [(n, f) for n in self.B for f in self.F]
@@ -435,7 +461,7 @@ class MaxFlow_OCT():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = 7200
+        self.master.Params.timeLimit = 1200
 
         # add decision variables
         b_idx = [(n, f) for n in self.B for f in self.F]
@@ -508,7 +534,7 @@ class MaxFlow_OCT():
                 else:
                     n = n * 2 + 2
             pred.append(self.labels[n])
-        return pred
+        return np.array(pred)
 
     def eval(self, x, y, metric = 'accuracy'):
 
@@ -521,7 +547,7 @@ class MaxFlow_OCT():
 
 if __name__ == '__main__':
 
-    args = {'max_depth': 2, 'lambda': 0}
+    args = {'max_depth': 3, 'lambda': 0.5}
     # x = np.array([[1,0,0], [1,0,0], [0,1,0], [1,1,1], [1,0,1]])
     # y = np.array([0,0,1,0,0])
     # x_test = np.array([[0,0,0], [1,1,0]])
@@ -530,7 +556,7 @@ if __name__ == '__main__':
     repeat = 10
 
     for _ in range(repeat):
-        x_train, x_test, y_train, y_test = dataloader('monk2')
+        x_train, x_test, y_train, y_test = dataloader('breast-cancer')
         N = int(len(y_train) * 0.7)
         print('Lmabda: {}'.format(args['lambda']))
         print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
@@ -543,8 +569,6 @@ if __name__ == '__main__':
         print(model.master.ObjVal, model.master.ObjVal / len(y_train))
         print(model.branches)
         print(model.labels)
-
-        y1 = model.predict(x_train)
 
         # model = MaxFlow_OCT(args)
         # model.stable_fit_robust(x_train, y_train, N = N)
@@ -564,13 +588,17 @@ if __name__ == '__main__':
         print(model.branches)
         print(model.labels)
 
-        y2 = model.predict(x_train)
+        model = naive_model()
+        model.fit(x_train, y_train)
+        naive_train = model.score(x_train, y_train)
+        naive_test = model.score(x_test, y_test)
+        print('Naive Train: {}, Test: {}'.format(naive_train, naive_test))
 
 
 
-        records.append([oct_train, s_oct_train, oct_test, s_oct_test])
+        records.append([oct_train, s_oct_train, naive_train, oct_test, s_oct_test, naive_test])
 
-    df = pd.DataFrame(records, columns = ['OCT Train', 'SOCT Train', 'OCT Test', 'SOCT Test'])
+    df = pd.DataFrame(records, columns = ['OCT Train', 'SOCT Train', 'Naive Train', 'OCT Test', 'SOCT Test', 'Naive Test'])
     print(df)
 
     # print(model.predict(x_train))
