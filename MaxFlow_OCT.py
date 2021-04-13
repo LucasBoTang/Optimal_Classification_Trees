@@ -32,14 +32,14 @@ class naive_model():
 
 class MaxFlow_OCT():
 
-    def __init__(self, args):
+    def __init__(self, max_depth, alpha):
         '''
         Intiialize the class
         :param args: the dict of arguments, must include
         '''
 
-        self.max_depth = args['max_depth']
-        self.lambda_ = args['lambda']
+        self.max_depth = max_depth
+        self.lambda_ = alpha
 
         # intialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
