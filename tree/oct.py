@@ -70,6 +70,7 @@ class optimalDecisionTreeClassifier:
         # data size
         self.n, self.p = x.shape
         print('Training data include {} instances, {} features.'.format(self.n,self.p))
+
         # node index
         n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
         b_index = n_index[:-2**self.max_depth] # branch nodes
