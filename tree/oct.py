@@ -10,10 +10,11 @@ class optimalDecisionTreeClassifier:
     """
     optimal classfication tree
     """
-    def __init__(self, max_depth=3, min_samples_split=2, alpha=0):
+    def __init__(self, max_depth=3, min_samples_split=2, alpha=0, timeLimit=600):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.alpha = alpha
+        self.timeLimit = timeLimit
         self.trained = False
 
     def fit(self, x, y):
@@ -80,6 +81,9 @@ class optimalDecisionTreeClassifier:
 
         # create a model
         m = Model('m')
+
+        # time limit
+        m.Params.timeLimit = self.timeLimit
 
         # model sense
         m.modelSense = GRB.MINIMIZE

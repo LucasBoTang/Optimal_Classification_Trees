@@ -10,8 +10,9 @@ class binOptimalDecisionTreeClassifier:
     """
     Binary Linear optimal classfication tree
     """
-    def __init__(self, max_depth=3):
+    def __init__(self, max_depth=3, timeLimit=600):
         self.max_depth = max_depth
+        self.timeLimit = timeLimit
         self.trained = False
 
     def fit(self, x, y):
@@ -93,6 +94,9 @@ class binOptimalDecisionTreeClassifier:
 
         # create a model
         m = Model('m')
+
+        # time limit
+        m.Params.timeLimit = self.timeLimit
 
         # model sense
         m.modelSense = GRB.MINIMIZE
