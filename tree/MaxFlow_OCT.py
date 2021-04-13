@@ -4,32 +4,6 @@ from dataset import dataloader
 import pandas as pd
 from itertools import combinations
 
-
-class naive_model():
-    def __init__(self):
-        pass
-
-    def fit(self, x, y):
-        n = len(y)
-        y = np.array(y)
-        n0 = (y == 0).sum()
-        n1 = (y == 1).sum()
-        if n0 >= n1:
-            self.most = 0
-        else:
-            self.most = 1
-
-    def predict(self, x):
-        n = len(x)
-        return np.ones(n) * self.most
-
-    def score(self, x, y):
-        pred = self.predict(x)
-        y = np.array(y)
-        n = len(y)
-
-        return np.sum(pred == y) / n
-
 class MaxFlow_OCT():
 
     def __init__(self, max_depth, alpha):
@@ -544,66 +518,3 @@ class MaxFlow_OCT():
             return n_corr / len(y)
 
         return None
-
-if __name__ == '__main__':
-
-    args = {'max_depth': 3, 'lambda': 0.5}
-    # x = np.array([[1,0,0], [1,0,0], [0,1,0], [1,1,1], [1,0,1]])
-    # y = np.array([0,0,1,0,0])
-    # x_test = np.array([[0,0,0], [1,1,0]])
-
-    records = []
-    repeat = 10
-
-    for _ in range(repeat):
-        x_train, x_test, y_train, y_test = dataloader('breast-cancer')
-        N = int(len(y_train) * 0.7)
-        print('Lmabda: {}'.format(args['lambda']))
-        print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
-
-        model = MaxFlow_OCT(args)
-        model.fit(x_train, y_train)
-        oct_train = model.eval(x_train, y_train)
-        oct_test = model.eval(x_test, y_test)
-        print(' OCT Train: {}, Test: {}'.format(oct_train, oct_test))
-        print(model.master.ObjVal, model.master.ObjVal / len(y_train))
-        print(model.branches)
-        print(model.labels)
-
-        # model = MaxFlow_OCT(args)
-        # model.stable_fit_robust(x_train, y_train, N = N)
-        # s_oct_train = model.eval(x_train, y_train)
-        # s_oct_test = model.eval(x_test, y_test)
-        # print('SOCT Train: {}, Test: {}'.format(s_oct_train, s_oct_test))
-        # print(model.master.ObjVal, model.master.ObjVal / N)
-        # print(model.branches)
-        # print(model.labels)
-
-        model = MaxFlow_OCT(args)
-        model.stable_fit_CP(x_train, y_train, N=N)
-        s_oct_train = model.eval(x_train, y_train)
-        s_oct_test = model.eval(x_test, y_test)
-        print('SOCT Train: {}, Test: {}'.format(s_oct_train, s_oct_test))
-        print(model.master.ObjVal, model.master.ObjVal / N)
-        print(model.branches)
-        print(model.labels)
-
-        model = naive_model()
-        model.fit(x_train, y_train)
-        naive_train = model.score(x_train, y_train)
-        naive_test = model.score(x_test, y_test)
-        print('Naive Train: {}, Test: {}'.format(naive_train, naive_test))
-
-
-
-        records.append([oct_train, s_oct_train, naive_train, oct_test, s_oct_test, naive_test])
-
-    df = pd.DataFrame(records, columns = ['OCT Train', 'SOCT Train', 'Naive Train', 'OCT Test', 'SOCT Test', 'Naive Test'])
-    print(df)
-
-    # print(model.predict(x_train))
-    # print(y_train)
-    # print(model.branches)
-    # print(model.labels)
-    # print('train: ', model.eval(x_train, y_train))
-    # print('test: ', model.eval(x_test, y_test))
