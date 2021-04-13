@@ -3,3 +3,4 @@
 
 from .oct import optimalDecisionTreeClassifier
 from .boct import binOptimalDecisionTreeClassifier
+from .mfoct import maxFlowOptimalDecisionTreeClassifier

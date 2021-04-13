@@ -1,10 +1,8 @@
 import numpy as np
 import gurobipy as gp
-from dataset import dataloader
-import pandas as pd
 from itertools import combinations
 
-class MaxFlow_OCT():
+class maxFlowOptimalDecisionTreeClassifier():
 
     def __init__(self, max_depth, alpha):
         '''
