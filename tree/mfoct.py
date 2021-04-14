@@ -2,16 +2,17 @@ import numpy as np
 import gurobipy as gp
 from itertools import combinations
 
-class maxFlowOptimalDecisionTreeClassifier():
+class MaxFlow_OCT():
 
-    def __init__(self, max_depth, alpha):
+    def __init__(self, max_depth, alpha, timeLimit = 1200):
         '''
         Intiialize the class
         :param args: the dict of arguments, must include
         '''
 
         self.max_depth = max_depth
-        self.lambda_ = alpha
+        self.alpha = alpha
+        self.timeLimit = timeLimit
 
         # intialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
@@ -60,6 +61,13 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.branches = {n: f for n in self.B for f in self.F if b_val[n,f] >= 0.999}
         self.labels = {n: k for n in self.B + self.T for k in self.K if w_val[n, k] >= 0.999}
 
+    def _calBaseline(self, y):
+        """
+        obtain baseline accuracy by simply predicting the most popular class
+        """
+        mode = stats.mode(y)[0][0]
+        return np.sum(y == mode)
+
     @staticmethod
     def min_cut(model, where):
         if where == gp.GRB.Callback.MIPSOL:
@@ -81,14 +89,7 @@ class maxFlowOptimalDecisionTreeClassifier():
                         n = 2 * n + 2
                         dir.append(1)
                     else:
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
+                        raise ValueError
 
                 S.append(n)
 
@@ -261,17 +262,13 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = 1200
+        self.master.Params.timeLimit = self.timeLimit
 
         # add decision variables
-        b_idx = [(n, f) for n in self.B for f in self.F]
-        self.b = self.master.addVars(b_idx, name = 'b', vtype=gp.GRB.BINARY)
-        w_idx = [(n, k) for n in self.B + self.T for k in self.K]
-        self.w = self.master.addVars(w_idx, name = 'w', vtype=gp.GRB.BINARY)
-        g_idx = [i for i in self.I]
-        self.g = self.master.addVars(g_idx, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
-        p_idx = [n for n in self.B + self.T]
-        self.p = self.master.addVars(p_idx, name = 'P', vtype=gp.GRB.BINARY)
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
 
         # add constraints
         self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
@@ -291,23 +288,9 @@ class maxFlowOptimalDecisionTreeClassifier():
                                 for n in self.B + self.T)
                                ,name = 'label_assignment')
 
-
-
-
-        # self.master.addConstr(self.b[0, 4] == 1)
-        # self.master.addConstr(self.b[1, 3] == 1)
-        # self.master.addConstr(self.b[2, 8] == 1)
-        # self.master.addConstr(self.w[3, 0] == 1)
-        # self.master.addConstr(self.w[4, 0] == 1)
-        # self.master.addConstr(self.w[5, 0] == 1)
-        # self.master.addConstr(self.w[6, 1] == 1)
-
-
-
-
         # set objective function
-        obj = (1 - self.lambda_) * gp.quicksum(self.g[i] for i in self.I) - \
-               self.lambda_ * gp.quicksum(self.b[n,f] for (n,f) in b_idx)
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * self.g.sum() - self.alpha * self.b.sum()
         self.master.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
@@ -355,17 +338,13 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = 3600
+        self.master.Params.timeLimit = self.timeLimit
 
         # add decision variables
-        b_idx = [(n, f) for n in self.B for f in self.F]
-        self.b = self.master.addVars(b_idx, name='b', vtype=gp.GRB.BINARY)
-        w_idx = [(n, k) for n in self.B + self.T for k in self.K]
-        self.w = self.master.addVars(w_idx, name='w', vtype=gp.GRB.BINARY)
-        p_idx = [n for n in self.B + self.T]
-        self.p = self.master.addVars(p_idx, name='P', vtype=gp.GRB.BINARY)
-        u_idx = [i for i in self.I]
-        self.u = self.master.addVars(u_idx, name='u', vtype=gp.GRB.CONTINUOUS)
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        self.u = self.master.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
         self.theta = self.master.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
 
 
@@ -388,8 +367,9 @@ class maxFlowOptimalDecisionTreeClassifier():
                                , name='label_assignment')
 
         # set objective function
-        obj = (1 - self.lambda_) * (N * self.theta - gp.quicksum(self.u[i] for i in self.I)) - \
-              self.lambda_ * gp.quicksum(self.b[n, f] for (n, f) in b_idx)
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * (N * self.theta - self.u.sum()) - \
+              self.alpha * self.b.sum()
         self.master.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
@@ -433,17 +413,13 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = 1200
+        self.master.Params.timeLimit = self.timeLimit
 
         # add decision variables
-        b_idx = [(n, f) for n in self.B for f in self.F]
-        self.b = self.master.addVars(b_idx, name='b', vtype=gp.GRB.BINARY)
-        w_idx = [(n, k) for n in self.B + self.T for k in self.K]
-        self.w = self.master.addVars(w_idx, name='w', vtype=gp.GRB.BINARY)
-        g_idx = [i for i in self.I]
-        self.g = self.master.addVars(g_idx, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
-        p_idx = [n for n in self.B + self.T]
-        self.p = self.master.addVars(p_idx, name='P', vtype=gp.GRB.BINARY)
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
         self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
 
         # add constraints
@@ -465,8 +441,8 @@ class maxFlowOptimalDecisionTreeClassifier():
                                , name='label_assignment')
 
         # set objective function
-        obj = (1 - self.lambda_) * self.t - \
-              self.lambda_ * gp.quicksum(self.b[n, f] for (n, f) in b_idx)
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * self.t - self.alpha * self.b.sum()
         self.master.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
