@@ -1,37 +1,282 @@
 import numpy as np
 import gurobipy as gp
-from dataset import dataloader
-import pandas as pd
 from scipy import stats
 
 class MaxFlow_OCT():
 
-    def __init__(self, max_depth, alpha, timeLimit = 1200):
-        '''
-        Intiialize the class
-        :param args: the dict of arguments, must include
-        '''
-
+    def __init__(self, max_depth, alpha, timeLimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
         self.timeLimit = timeLimit
+        self.output = output
+        self.trained = False
 
         # intialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
         self.T = list(range(2 ** self.max_depth - 1, 2 ** (self.max_depth + 1) - 1))
         self.A = [self.tree_ancestor(n) for n in self.B + self.T]
 
-    def tree_children(self, node):
-        '''
-        given a node, return its left and right children in the tree
-        :param node:
-        :return:
-        '''
+    def fit(self, x, y):
+        """
+        fit training data
+        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
+        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
+        """
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
 
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y)+1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = self.output
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name = 'branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               ,name = 'label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1 / baseline * self.g.sum() - self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._g = self.g
+        self.master.optimize(self.min_cut)
+
+        # self.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        elf.trained = True
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # elf.master.display()
+
+    def stable_fit_robust(self, x, y, N):
+        """
+        fit training data with min-max method
+        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
+        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
+        """
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y) + 1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = self.output
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        self.u = self.master.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
+        self.theta = self.master.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
+
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name='branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               , name='label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1 / baseline * (N * self.theta - self.u.sum()) - \
+              self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._u = self.u
+        self.master._theta = self.theta
+
+        self.master.optimize(self.stable_robust_min_cut)
+
+        # elf.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        self.trained = True
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # self.master.display()
+
+    def stable_fit_CP(self, x, y, N):
+        """
+        fit training data with cutting plane
+        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
+        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
+        """
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y) + 1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = self.output
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name='branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               , name='label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * self.t - self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+        self.master._N = N
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._g = self.g
+        self.master._t = self.t
+        self.master.optimize(self.stable_CP_min_cut)
+
+        # self.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        self.trained = True
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # elf.master.display()
+
+    def predict(self, x):
+        """
+        model prediction
+        """
+        assert self.trained, 'This binOptimalDecisionTreeClassifier instance is not fitted yet.'
+
+        pred = []
+        for val in x:
+            n = 0
+            while n not in self.labels:
+                f = self.branches[n]
+                if val[f] == 0:
+                    n = n * 2 + 1
+                else:
+                    n = n * 2 + 2
+            pred.append(self.labels[n])
+        return np.array(pred)
+
+    def tree_children(self, node):
+        """
+        get left and right children of node in the tree
+        """
         return 2 * node + 1, 2 * node + 2
 
     def tree_parent(self, node):
-
+        """
+        get parent of node in the tree
+        """
         if node == 0:
             return None
         elif node % 2 == 1:
@@ -40,12 +285,9 @@ class MaxFlow_OCT():
             return int(node // 2) - 1
 
     def tree_ancestor(self, node):
-        '''
+        """
         find the acesestor of the given node in the tree
-        :param node:
-        :return:
-        '''
-
+        """
         ancestor = []
         parent = self.tree_parent(node)
 
@@ -56,7 +298,9 @@ class MaxFlow_OCT():
         return ancestor
 
     def tree_construction(self):
-
+        """
+        construct the decision tree
+        """
         b_val = self.master.getAttr('x', self.b)
         w_val = self.master.getAttr('x', self.w)
 
@@ -192,15 +436,7 @@ class MaxFlow_OCT():
                         n = 2 * n + 2
                         dir.append(1)
                     else:
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-                        print('Weird')
-
+                        raise ValueError('Features should be binary')
                 S.append(n)
 
                 if np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) <= 0.1:
@@ -241,256 +477,3 @@ class MaxFlow_OCT():
                 else:
                     choice = np.random.choice(miss, model._N, replace=False)
                     model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in choice))
-
-    def fit(self, x, y):
-        '''
-        Fit the classification tree
-        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
-        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
-        :return:
-        '''
-
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
-
-        # the number of distinct labels
-        self.K = list(range(np.max(self.y)+1))
-        # the set of training data
-        self.I = list(range(self.n))
-        # the set of features
-        self.F = list(range(self.m))
-
-        # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = self.timeLimit
-
-        # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
-        self.g = self.master.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
-        self.p = self.master.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
-
-        # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name = 'branching_nodes')
-
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
-
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               ,name = 'label_assignment')
-
-        # set objective function
-        baseline = self._calBaseline(y)
-        obj = 1/baseline * self.g.sum() - self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
-
-        # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
-
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._g = self.g
-        self.master.optimize(self.min_cut)
-
-        # self.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # elf.master.display()
-
-    def stable_fit_robust(self, x, y, N):
-        '''
-
-        :param x:
-        :param y:
-        :param N:
-        :return:
-        '''
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
-
-        # the number of distinct labels
-        self.K = list(range(np.max(self.y) + 1))
-        # the set of training data
-        self.I = list(range(self.n))
-        # the set of features
-        self.F = list(range(self.m))
-
-        # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = self.timeLimit
-
-        # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
-        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
-        self.u = self.master.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
-        self.theta = self.master.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
-
-
-        # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name='branching_nodes')
-
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
-
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               , name='label_assignment')
-
-        # set objective function
-        baseline = self._calBaseline(y)
-        obj = 1/baseline * (N * self.theta - self.u.sum()) - \
-              self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
-
-        # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
-
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._u = self.u
-        self.master._theta = self.theta
-
-        self.master.optimize(self.stable_robust_min_cut)
-
-        # elf.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # self.master.display()
-
-    def stable_fit_CP(self, x, y, N):
-
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
-
-        # the number of distinct labels
-        self.K = list(range(np.max(self.y) + 1))
-        # the set of training data
-        self.I = list(range(self.n))
-        # the set of features
-        self.F = list(range(self.m))
-
-        # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = 0
-        self.master.Params.timeLimit = self.timeLimit
-
-        # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
-        self.g = self.master.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
-        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
-        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
-
-        # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name='branching_nodes')
-
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
-
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               , name='label_assignment')
-
-        # set objective function
-        baseline = self._calBaseline(y)
-        obj = 1/baseline * self.t - self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
-
-        # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
-        self.master._N = N
-
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._g = self.g
-        self.master._t = self.t
-        self.master.optimize(self.stable_CP_min_cut)
-
-        # self.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # elf.master.display()
-
-    def predict(self, x):
-
-        pred = []
-        for val in x:
-            n = 0
-            while n not in self.labels:
-                f = self.branches[n]
-                if val[f] == 0:
-                    n = n * 2 + 1
-                else:
-                    n = n * 2 + 2
-            pred.append(self.labels[n])
-        return np.array(pred)
-
-    def eval(self, x, y, metric = 'accuracy'):
-
-        y_pred = self.predict(x)
-        if metric == 'accuracy':
-            n_corr = (y_pred == y).sum()
-            return n_corr / len(y)
-
-        return None
