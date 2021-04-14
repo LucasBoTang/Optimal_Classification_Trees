@@ -99,7 +99,12 @@ def loadHayesRoth():
     df_test = pd.read_csv('./data/hayes-roth/hayes-roth.test', header=None, delimiter=',')
     x_train, y_train = df_train[[1,2,3,4]], df_train[5]
     x_test, y_test = df_test[[0,1,2,3]], df_test[4]
-    return np.concatenate((x_train, x_test), axis=0), np.concatenate((y_train, y_test), axis=0)
+    x, y = np.concatenate((x_train, x_test), axis=0), np.concatenate((y_train, y_test), axis=0)
+    x = pd.DataFrame(x)
+    x1, x2 = np.array(x[[0,3]]), np.array(x[[1,2]])
+    x1 = oneHot(x1)
+    x = np.concatenate((x1, x2), axis=1)
+    return x, y
 
 def loadHouseVotes84():
     """
