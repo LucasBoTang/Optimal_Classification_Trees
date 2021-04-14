@@ -23,6 +23,13 @@ class binOptimalDecisionTreeClassifier:
         """
         fit training data
         """
+        # delete columns
+        self.delete_cols = []
+        for j in range(x.shape[1]):
+            if len(np.unique(x[:,j])) == 1:
+                self.delete_cols.append(j)
+        x = np.delete(x, self.delete_cols, axis=1)
+
         # solve MIP
         m, e, f, l, p, q = self._buildMIP(x, y)
         m.optimize()
@@ -53,6 +60,9 @@ class binOptimalDecisionTreeClassifier:
         model prediction
         """
         assert self.trained, 'This binOptimalDecisionTreeClassifier instance is not fitted yet.'
+
+        # delete columns
+        x = np.delete(x, self.delete_cols, axis=1)
 
         # leaf nodes
         l_index = [i for i in range(2 ** self.max_depth, 2 ** (self.max_depth + 1))]
