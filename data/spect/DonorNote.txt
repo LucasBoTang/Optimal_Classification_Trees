@@ -1,0 +1,12 @@
+September 1, 2006
+
+SPECTF.test has been modified (see Donor Note below for justification).  
+The incorrect test set has been renamed to SPECTFincorrect.test
+
+--Librarian
+
+
+Donor Note:
+
+> The incorrect file is the SPECTF.test file in the SPECT dataset. It contains 
+> too many examples (duplicates the training file) and some of the data points are repeated.
