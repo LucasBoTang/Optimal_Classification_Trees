@@ -7,7 +7,7 @@ import gurobipy as gp
 from scipy import stats
 
 class maxFlowOptimalDecisionTreeClassifier():
-    def __init__(self, max_depth, alpha, timelimit=600, output=True):
+    def __init__(self, max_depth, alpha=0, timelimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
         self.timelimit = timelimit
@@ -89,7 +89,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # self.master.display()
         # print(self.master.printAttr('X'))
         self.tree_construction()
-        elf.trained = True
+        self.trained = True
         # print(self.master.ObjVal)
         # self.master.Params.outputFlag = 1
         # elf.master.display()
