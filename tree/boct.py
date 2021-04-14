@@ -206,8 +206,9 @@ class binOptimalDecisionTreeClassifier:
             prev_i = np.argmin(x[:,j])
             prev_label = y[prev_i]
             for i in np.argsort(x[:,j])[1:]:
-                yi = y[x[:,j] == x[i,j]]
-                if not np.all(prev_label == yi) and x[i,j] != x[prev_i,j]:
+                y_cur = y[x[:,j] == x[i,j]]
+                y_prev = y[x[:,j] == x[prev_i,j]]
+                if (not np.all(prev_label == y_cur) or len(np.unique(y_prev)) > 1) and x[i,j] != x[prev_i,j]:
                     threshold.append((x[prev_i,j] + x[i,j]) / 2)
                     prev_label = y[i]
                 prev_i = i
