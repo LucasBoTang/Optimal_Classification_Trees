@@ -7,10 +7,10 @@ import gurobipy as gp
 from scipy import stats
 
 class maxFlowOptimalDecisionTreeClassifier():
-    def __init__(self, max_depth, alpha, timeLimit=600, output=True):
+    def __init__(self, max_depth, alpha, timelimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
-        self.timeLimit = timeLimit
+        self.timelimit = timelimit
         self.output = output
         self.trained = False
 
@@ -39,7 +39,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
-        self.master.Params.timeLimit = self.timeLimit
+        self.master.Params.timelimit = self.timelimit
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
@@ -114,7 +114,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
-        self.master.Params.timeLimit = self.timeLimit
+        self.master.Params.timelimit = self.timelimit
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
@@ -194,7 +194,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
-        self.master.Params.timeLimit = self.timeLimit
+        self.master.Params.timelimit = self.timelimit
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)

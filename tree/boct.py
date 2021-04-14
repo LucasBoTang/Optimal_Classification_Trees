@@ -11,10 +11,10 @@ class binOptimalDecisionTreeClassifier:
     """
     Binary Linear optimal classfication tree
     """
-    def __init__(self, max_depth=3, min_samples_split=2, timeLimit=600, output=True):
+    def __init__(self, max_depth=3, min_samples_split=2, timelimit=600, output=True):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
-        self.timeLimit = timeLimit
+        self.timelimit = timelimit
         self.output = output
         self.trained = False
 
@@ -100,7 +100,7 @@ class binOptimalDecisionTreeClassifier:
         m = Model('m')
 
         # time limit
-        m.Params.timeLimit = self.timeLimit
+        m.Params.timelimit = self.timelimit
         # output
         m.Params.outputFlag = self.output
 
