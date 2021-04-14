@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+# author: Bo Lin
+
 import numpy as np
 import gurobipy as gp
 from scipy import stats

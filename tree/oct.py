@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+# author: Bo Tang
 
 import numpy as np
 from scipy import stats
