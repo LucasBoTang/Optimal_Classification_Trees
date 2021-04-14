@@ -25,6 +25,9 @@ class optimalDecisionTreeClassifier:
         """
         # scale data
         self.scales = np.max(x, axis=0)
+        for i in range(len(self.scales)):
+            if self.scales[i] == 0:
+                self.scales[i] = 1
 
         # solve MIP
         m, a, b, c, d = self._buildMIP(x/self.scales, y)
@@ -106,7 +109,6 @@ class optimalDecisionTreeClassifier:
         M = m.addVars(self.labels, l_index, vtype=GRB.CONTINUOUS, name='M') # leaf node samples with label
         N = m.addVars(l_index, vtype=GRB.CONTINUOUS, name='N') # leaf node samples
 
-
         # calculate baseline accuracy
         baseline = self._calBaseline(y)
 
@@ -182,9 +184,9 @@ class optimalDecisionTreeClassifier:
             # sort
             xj = np.sort(xj)[::-1]
             # distance
-            dis = []
+            dis = [0]
             for i in range(len(xj)-1):
                 dis.append(xj[i] - xj[i+1])
             # min distance
-            min_dis.append(np.min(dis))
+            min_dis.append(np.min(dis) if np.min(dis) else 1)
         return min_dis
