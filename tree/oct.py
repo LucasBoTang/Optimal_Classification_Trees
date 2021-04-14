@@ -11,11 +11,11 @@ class optimalDecisionTreeClassifier:
     """
     optimal classfication tree
     """
-    def __init__(self, max_depth=3, min_samples_split=2, alpha=0, timeLimit=600, output=True):
+    def __init__(self, max_depth=3, min_samples_split=2, alpha=0, timelimit=600, output=True):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.alpha = alpha
-        self.timeLimit = timeLimit
+        self.timelimit = timelimit
         self.output = output
         self.trained = False
 
@@ -23,8 +23,11 @@ class optimalDecisionTreeClassifier:
         """
         fit training data
         """
+        # scale data
+        self.scales = np.max(x, axis=0)
+
         # solve MIP
-        m, a, b, c, d = self._buildMIP(x, y)
+        m, a, b, c, d = self._buildMIP(x/self.scales, y)
         m.optimize()
 
         # get parameters
@@ -52,7 +55,7 @@ class optimalDecisionTreeClassifier:
                     labelmap[t] = k
 
         y_pred = []
-        for xi in x:
+        for xi in x/self.scales:
             t = 1
             while t not in l_index:
                 right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) >= self._b[t])
@@ -85,7 +88,7 @@ class optimalDecisionTreeClassifier:
         m = Model('m')
 
         # time limit
-        m.Params.timeLimit = self.timeLimit
+        m.Params.timelimit = self.timelimit
         # output
         m.Params.outputFlag = self.output
 
