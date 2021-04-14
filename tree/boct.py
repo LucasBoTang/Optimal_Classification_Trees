@@ -10,8 +10,9 @@ class binOptimalDecisionTreeClassifier:
     """
     Binary Linear optimal classfication tree
     """
-    def __init__(self, max_depth=3, timeLimit=600, output=True):
+    def __init__(self, max_depth=3, min_samples_split=2, timeLimit=600, output=True):
         self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
         self.timeLimit = timeLimit
         self.output = output
         self.trained = False
@@ -40,6 +41,7 @@ class binOptimalDecisionTreeClassifier:
             ind = 0
             for i in range(self.bin_num):
                 ind = ind * 2 + int(q[t,i].x)
+            ind = min(ind, len(self.thresholds[feature]))
             self.split[t] = (feature, self.thresholds[feature][-ind])
 
         self.trained = True
@@ -110,6 +112,8 @@ class binOptimalDecisionTreeClassifier:
         l = m.addVars(self.n, l_index, vtype=GRB.CONTINUOUS, name='z') # leaf node assignment
         p = m.addVars(l_index, self.labels, vtype=GRB.BINARY, name='p') # node prediction
         q = m.addVars(b_index, self.bin_num, vtype=GRB.BINARY, name='q') # threshold selection
+        if self.min_samples_split:
+            a = m.addVars(l_index, vtype=GRB.BINARY, name='a') # leaf node activation
 
         # objective function
         m.setObjective(e.sum())
@@ -171,6 +175,9 @@ class binOptimalDecisionTreeClassifier:
                     if y[i] == c:
                         l_sum += l[i,t]
                 m.addConstr(l_sum - M * p[t,c] <= e[t,c])
+        if self.min_samples_split:
+            m.addConstrs(l[i,t] <= a[t] for t in l_index for i in range(self.n))
+            m.addConstrs(l.sum('*', t) >= self.min_samples_split * a[t] for t in l_index)
 
         return m, e, f, l, p, q
 
