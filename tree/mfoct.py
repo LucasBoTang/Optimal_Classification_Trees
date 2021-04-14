@@ -2,8 +2,7 @@ import numpy as np
 import gurobipy as gp
 from scipy import stats
 
-class MaxFlow_OCT():
-
+class maxFlowOptimalDecisionTreeClassifier():
     def __init__(self, max_depth, alpha, timeLimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
@@ -316,6 +315,9 @@ class MaxFlow_OCT():
 
     @staticmethod
     def min_cut(model, where):
+        """
+        lazy constraints
+        """
         if where == gp.GRB.Callback.MIPSOL:
             b_val = model.cbGetSolution(model._b)
             w_val = model.cbGetSolution(model._w)
@@ -364,6 +366,9 @@ class MaxFlow_OCT():
 
     @staticmethod
     def stable_robust_min_cut(model, where):
+        """
+        lazy constraints
+        """
         if where == gp.GRB.Callback.MIPSOL:
             b_val = model.cbGetSolution(model._b)
             w_val = model.cbGetSolution(model._w)
@@ -412,6 +417,9 @@ class MaxFlow_OCT():
 
     @staticmethod
     def stable_CP_min_cut(model, where):
+        """
+        lazy constraints
+        """
         if where == gp.GRB.Callback.MIPSOL:
             b_val = model.cbGetSolution(model._b)
             w_val = model.cbGetSolution(model._w)
