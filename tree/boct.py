@@ -5,6 +5,7 @@
 from collections import namedtuple
 
 import numpy as np
+from scipy import stats
 from gurobipy import *
 
 class binOptimalDecisionTreeClassifier:
@@ -96,6 +97,9 @@ class binOptimalDecisionTreeClassifier:
         self.thresholds = self._getThresholds(x, y)
         self.bin_num = int(np.ceil(np.log2(max([len(threshold) for threshold in self.thresholds]))))
 
+        # calculate baseline accuracy
+        baseline = self._calBaseline(y)
+
         # create a model
         m = Model('m')
 
@@ -117,7 +121,7 @@ class binOptimalDecisionTreeClassifier:
             a = m.addVars(l_index, vtype=GRB.BINARY, name='a') # leaf node activation
 
         # objective function
-        m.setObjective(e.sum())
+        m.setObjective(e.sum() / baseline)
 
         # constraints
         m.addConstrs(f.sum(t, '*') == 1 for t in b_index)
@@ -253,3 +257,10 @@ class binOptimalDecisionTreeClassifier:
                     rl_index.append(t)
                 tp //= 2
         return rl_index
+
+    def _calBaseline(self, y):
+        """
+        obtain baseline accuracy by simply predicting the most popular class
+        """
+        mode = stats.mode(y)[0][0]
+        return np.sum(y == mode)
