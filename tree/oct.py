@@ -184,7 +184,7 @@ class optimalDecisionTreeClassifier:
             # sort
             xj = np.sort(xj)[::-1]
             # distance
-            dis = [0]
+            dis = [1]
             for i in range(len(xj)-1):
                 dis.append(xj[i] - xj[i+1])
             # min distance
