@@ -41,7 +41,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master.Params.outputFlag = self.output
         self.master.Params.timelimit = self.timelimit
         # parallel
-        m.params.threads = 0
+        self.master.params.threads = 0
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
@@ -117,6 +117,8 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
         self.master.Params.timelimit = self.timelimit
+        # parallel
+        self.master.params.threads = 0
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
@@ -197,6 +199,8 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
         self.master.Params.timelimit = self.timelimit
+        # parallel
+        self.master.params.threads = 0
 
         # add decision variables
         self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
