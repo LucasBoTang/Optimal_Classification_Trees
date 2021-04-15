@@ -117,6 +117,8 @@ class binOptimalDecisionTreeClassifier:
         m.Params.timelimit = self.timelimit
         # output
         m.Params.outputFlag = self.output
+        # parallel
+        m.params.threads = 0
 
         # model sense
         m.modelSense = GRB.MINIMIZE
