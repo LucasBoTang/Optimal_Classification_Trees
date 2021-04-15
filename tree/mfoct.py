@@ -28,6 +28,8 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.x = x
         self.y = y
         self.n, self.m = self.x.shape
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.m))
 
         # the number of distinct labels
         self.K = list(range(np.max(self.y)+1))
@@ -39,6 +41,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
+        self.master.Params.LogToConsole = self.output
         self.master.Params.timelimit = self.timelimit
         # parallel
         self.master.params.threads = 0
@@ -116,6 +119,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
+        self.master.Params.LogToConsole = self.output
         self.master.Params.timelimit = self.timelimit
         # parallel
         self.master.params.threads = 0
@@ -198,6 +202,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the master problem
         self.master = gp.Model('master')
         self.master.Params.outputFlag = self.output
+        self.master.Params.LogToConsole = self.output
         self.master.Params.timelimit = self.timelimit
         # parallel
         self.master.params.threads = 0

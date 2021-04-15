@@ -78,7 +78,8 @@ class optimalDecisionTreeClassifier:
         """
         # data size
         self.n, self.p = x.shape
-        print('Training data include {} instances, {} features.'.format(self.n,self.p))
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.p))
 
         # node index
         n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
@@ -89,11 +90,12 @@ class optimalDecisionTreeClassifier:
 
         # create a model
         m = Model('m')
-
+       
         # time limit
         m.Params.timelimit = self.timelimit
         # output
         m.Params.outputFlag = self.output
+        m.Params.LogToConsole = self.output
         # parallel
         m.params.threads = 0
 
