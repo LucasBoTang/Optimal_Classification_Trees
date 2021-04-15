@@ -122,8 +122,15 @@ def loadSoybean():
     load soybean dataset
     """
     df = pd.read_csv('./data/soybean-small/soybean-small.data', header=None, delimiter=',')
+    for i in range(35):
+        df = df[df[i] != '?']
     x, y = df[range(35)], df[35]
     y = pd.factorize(y)
+    x = pd.DataFrame(x)
+    x1 = np.array(x[[0,5,8,12,13,14,17,20,21,23,25,27,28,34]])
+    x2 = np.array(x[[1,2,3,4,6,7,9,10,11,15,16,18,19,22,24,26,29,30,31,32,33]])
+    x1 = oneHot(x1)
+    x = np.concatenate((x1, x2), axis=1)
     return np.array(x), np.array(y, dtype=object)[0]
 
 def loadSpect():
