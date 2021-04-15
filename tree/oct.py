@@ -90,7 +90,7 @@ class optimalDecisionTreeClassifier:
 
         # create a model
         m = Model('m')
-       
+
         # time limit
         m.Params.timelimit = self.timelimit
         # output
@@ -134,7 +134,7 @@ class optimalDecisionTreeClassifier:
         # (16)
         m.addConstrs(z.sum('*', t) == N[t] for t in l_index)
         # (18)
-        m.addConstrs(c.sum('*', t) == l[t] for t in l_index)
+        m.addConstrs(c.sum('*', t) == 1 for t in l_index)
         # (13) and (14)
         for t in l_index:
             left = (t % 2 == 0)
