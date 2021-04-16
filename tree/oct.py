@@ -91,11 +91,11 @@ class optimalDecisionTreeClassifier:
         # create a model
         m = Model('m')
 
-        # time limit
-        m.Params.timelimit = self.timelimit
         # output
         m.Params.outputFlag = self.output
         m.Params.LogToConsole = self.output
+        # time limit
+        m.Params.timelimit = self.timelimit
         # parallel
         m.params.threads = 0
 
