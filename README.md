@@ -16,3 +16,15 @@ This project aims to better understand the computational and prediction performa
 - [Optimal Classification Trees (OCT)](https://link.springer.com/article/10.1007/s10994-017-5633-9) - Bertsimas, D., & Dunn, J. (2017). Optimal classification trees. Machine Learning, 106(7), 1039-1082.
 - [Optimal Classification Tree with Binary Encoding (binOCT)](https://ojs.aaai.org//index.php/AAAI/article/view/3978) - Verwer, S., & Zhang, Y. (2019). Learning optimal classification trees using a binary linear program formulation. In Proceedings of the AAAI Conference on Artificial Intelligence (Vol. 33, No. 01, pp. 1625-1632).
 - [Max-Flow Optimal Classification Trees (flowOCT)](http://www.optimization-online.org/DB_HTML/2021/01/8220.html) - Aghaei, S., Gómez, A., & Vayanos, P. (2021). Strong Optimal Classification Trees. arXiv preprint arXiv:2103.15965.
+
+### Data
+
+- [Balance Scale](https://archive.ics.uci.edu/ml/datasets/balance+scale)
+- [Breast Cancer](https://archive.ics.uci.edu/ml/datasets/breast+cancer)
+- [Car Evaluation](https://archive.ics.uci.edu/ml/datasets/car+evaluation)
+- [Hayes-Roth](https://archive.ics.uci.edu/ml/datasets/Hayes-Roth)
+- [House Votes 84](https://archive.ics.uci.edu/ml/datasets/Congressional+Voting+Records)
+- [Soybean (small)](https://archive.ics.uci.edu/ml/datasets/soybean+(small))
+- [SPECT Heart](https://archive.ics.uci.edu/ml/datasets/spect+heart)
+- [Tic-Tac-Toe Endgame](https://archive.ics.uci.edu/ml/datasets/Tic-Tac-Toe+Endgame)
+- [MONK's Problems](https://archive.ics.uci.edu/ml/datasets/MONK's+Problems)
