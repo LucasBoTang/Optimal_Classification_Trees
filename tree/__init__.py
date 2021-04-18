@@ -3,5 +3,5 @@
 # author: Bo Tang
 
 from .oct import optimalDecisionTreeClassifier
-from .boct import binOptimalDecisionTreeClassifier
+from .binoct import binOptimalDecisionTreeClassifier
 from .mfoct import maxFlowOptimalDecisionTreeClassifier

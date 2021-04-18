@@ -10,7 +10,7 @@ from gurobipy import *
 
 class binOptimalDecisionTreeClassifier:
     """
-    Binary Linear optimal classfication tree
+    Binary encoding  optimal classfication tree
     """
     def __init__(self, max_depth=3, min_samples_split=2, timelimit=600, output=True):
         self.max_depth = max_depth
