@@ -88,7 +88,7 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | tic-tac-toe    | 5     | 0.7079 | 0.7944 | 0.7236  | 0.8097  |
 
 #### Solution Time for OCT, binOCT, flowOCT and CART
-| instance       | depth | OCT    | bOCT   | flowOCT |   CART  |
+| instance       | depth | OCT    | bOCT   | flowOCT | Sklearn |
 |----------------|-------|--------|--------|---------|---------|
 | balance-scale  | 2     | 199.01 | 5.50   | 1.68    | 0.00    |
 | balance-scale  | 3     | 600.82 | 601.13 | 90.03   | 0.00    |
@@ -118,7 +118,7 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | monks-2        | 3     | 600.79 | 601.06 | 405.49  | 0.00    |
 | monks-2        | 4     | 601.97 | 601.56 | 407.86  | 0.00    |
 | monks-2        | 5     | 604.79 | 603.65 | 405.16  | 0.00    |
-| monks-3        | 2     | 11.89  | 0.69   | 0.79    | 0.00    |
+| monks-3        | 2     | 11.89  | 0.69   | 0.79    | 0.02    |
 | monks-3        | 3     | 391.99 | 40.54  | 5.36    | 0.00    |
 | monks-3        | 4     | 417.42 | 601.01 | 203.52  | 0.00    |
 | monks-3        | 5     | 449.67 | 602.93 | 201.92  | 0.00    |
