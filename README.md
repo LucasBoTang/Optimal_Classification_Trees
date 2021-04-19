@@ -11,7 +11,7 @@ This project aims to better understand the computational and prediction performa
 * [Python 3.7](https://www.python.org/)
 * [Gurobi 9.1](https://www.gurobi.com/)
 
-### Models
+### MIP Models
 
 - [Optimal Classification Trees (OCT)](https://link.springer.com/article/10.1007/s10994-017-5633-9) - Bertsimas, D., & Dunn, J. (2017). Optimal classification trees. Machine Learning, 106(7), 1039-1082.
 - [Optimal Classification Tree with Binary Encoding (binOCT)](https://ojs.aaai.org//index.php/AAAI/article/view/3978) - Verwer, S., & Zhang, Y. (2019). Learning optimal classification trees using a binary linear program formulation. In Proceedings of the AAAI Conference on Artificial Intelligence (Vol. 33, No. 01, pp. 1625-1632).
@@ -37,7 +37,9 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 
 ### Results
 
-Out-of-Sample Prediction Performance for OCT, binOCT, flowOCT, and CART
+All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a memory of 16 GB. Algorithms are implemented in Python 3.7 with Gurobi 9.1 as an optimization solver. The time limit is set to $600$ seconds.
+
+#### Out-of-Sample Prediction Performance for OCT, binOCT, flowOCT, and CART
 | instance       | depth | OCT    | bOCT   | flowOCT |  CART   |
 |----------------|-------|--------|--------|---------|---------|
 | balance-scale  | 2     | 0.6638 | 0.6497 | 0.6667  | 0.6285  |
@@ -85,7 +87,7 @@ Out-of-Sample Prediction Performance for OCT, binOCT, flowOCT, and CART
 | tic-tac-toe    | 4     | 0.7417 | 0.7875 | 0.7287  | 0.7097  |
 | tic-tac-toe    | 5     | 0.7079 | 0.7944 | 0.7236  | 0.7097  |
 
-Solution Time for OCT, binOCT, flowOCT and CART
+#### Solution Time for OCT, binOCT, flowOCT and CART
 | instance       | depth | OCT    | bOCT   | flowOCT |   CART  |
 |----------------|-------|--------|--------|---------|---------|
 | balance-scale  | 2     | 199.01 | 5.50   | 1.68    | 0.00    |
@@ -133,7 +135,7 @@ Solution Time for OCT, binOCT, flowOCT and CART
 | tic-tac-toe    | 4     | 604.04 | 603.74 | 432.64  | 0.00    |
 | tic-tac-toe    | 5     | 610.13 | 612.51 | 427.99  | 0.00    |
 
-Average Out-of-Sample Prediction Accuracy over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
+#### Average Out-of-Sample Prediction Accuracy over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
 | instance       | depth | OCT    | bOCT   | flowOCT | Sklearn |
 |----------------|-------|--------|--------|---------|---------|
 | balance-scale  | 2     | 0.6638 | 0.6497 | 0.6667  | 0.6285  |
@@ -181,7 +183,7 @@ Average Out-of-Sample Prediction Accuracy over 10 Trails for flowOCT and SOCT So
 | tic-tac-toe    | 4     | 0.7417 | 0.7875 | 0.7287  | 0.7097  |
 | tic-tac-toe    | 5     | 0.7079 | 0.7944 | 0.7236  | 0.7097  |
 
-Average Solution over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
+#### Average Solution over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
 | instance       | flowOCT | SOCT_CP | SOCT_R |
 |----------------|---------|---------|--------|
 | soybean-small  | 0.32    | 0.62    | 1.28   |
