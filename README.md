@@ -35,6 +35,10 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 - [Tic-Tac-Toe Endgame](https://archive.ics.uci.edu/ml/datasets/Tic-Tac-Toe+Endgame)
 - [MONK's Problems](https://archive.ics.uci.edu/ml/datasets/MONK's+Problems)
 
+### Report
+
+Details about the project report is [here](https://github.com/LucasBoTang/MIP_Decision_Tree/blob/main/Report.pdf).
+
 ### Results
 
 All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a memory of 16 GB. Algorithms are implemented in Python 3.7 with Gurobi 9.1 as an optimization solver. The time limit is set to 600 seconds.
