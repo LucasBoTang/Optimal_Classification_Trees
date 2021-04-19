@@ -1,67 +1,606 @@
+import numpy as np
+import gurobipy as gp
 from dataset import dataloader
 import pandas as pd
 import time
-from MaxFlow_OCT import MaxFlow_OCT
-import numpy as np
-from sklearn.model_selection import train_test_split
+from scipy import stats
 
 
-seeds = [11, 23, 34, 45, 56, 67, 78, 89, 93, 5]
-depths = [3]
-datasets = ['balance-scale', 'breast-cancer', 'car_evaluation', 'hayes-roth', 'house-votes-84',
-            'soybean-small', 'spect', 'tic-tac-toe', 'monk1', 'monk2', 'monk3']
+class naive_model():
+    def __init__(self):
+        pass
 
-alphas = [0, 0.01, 0.1]
-repeat = [1]
+    def fit(self, x, y):
+        n = len(y)
+        y = np.array(y)
+        n0 = (y == 0).sum()
+        n1 = (y == 1).sum()
+        if n0 >= n1:
+            self.most = 0
+        else:
+            self.most = 1
 
-rec_oct, rec_soctr, rec_soctcp = [], [], []
+    def predict(self, x):
+        n = len(x)
+        return np.ones(n) * self.most
 
-for seed in seeds:
-    for depth in depths:
-        for dataset in datasets:
+    def score(self, x, y):
+        pred = self.predict(x)
+        y = np.array(y)
+        n = len(y)
 
-            x_train, x_test, y_train, y_test = dataloader(dataset, seed)
-            print('\n{} -- Train: {}, Test: {}'.format(dataset, len(y_train), len(y_test)))
-            N = int(len(y_train) * 0.666)
+        return np.sum(pred == y) / n
 
-            for alpha in alphas:
+class MaxFlow_OCT():
 
-                x_train_oct, x_vali, y_train_oct, y_vali = train_test_split(x_train, y_train, test_size=0.3333, random_state=r*3)
-                model = MaxFlow_OCT(depth, alpha)
-                tick = time.time()
-                model.fit(x_train_oct, y_train_oct)
-                t_oct = time.time() - tick
-                oct_train = model.eval(x_train_oct, y_train_oct)
-                oct_test = model.eval(x_test, y_test)
-                oct_vali = model.eval(x_vali, y_vali)
-                print(' OCT Train: {:.2f}, Vali: {:.2f} Test: {:.2f}'.format(oct_train, oct_vali, oct_test))
+    def __init__(self, max_depth, alpha, timeLimit = 600):
+        '''
+        Intiialize the class
+        :param args: the dict of arguments, must include
+        '''
 
-                rec_oct.append([dataset, depth, alpha, seed, oct_train, oct_vali, oct_test, t_oct])
-                df = pd.DataFrame(rec_oct, columns=['instance', 'depth', 'alpha', 'seed',
-                                                    'Train', 'Vali', 'Test', 'Time'])
-                df.to_csv('./res/flowOCT-3.csv', index=False)
+        self.max_depth = max_depth
+        self.alpha = alpha
+        self.timeLimit = timeLimit
 
-                model = MaxFlow_OCT(depth, alpha)
-                tick = time.time()
-                model.stable_fit_robust(x_train, y_train, N=N)
-                soctr_t = time.time() - tick
-                soctr_train = model.eval(x_train, y_train)
-                soctr_test = model.eval(x_test, y_test)
-                print('SOCTR Train: {:.2f}, Test: {:.2f}'.format(soctr_train, soctr_test))
-                rec_soctr.append([dataset, depth, alpha, seed, soctr_train, soctr_test, soctr_t])
-                df = pd.DataFrame(rec_soctr, columns=['instance', 'depth', 'alpha', 'seed',
-                                                      'Train', 'Test', 'Time'])
-                df.to_csv('./res/SOCT_Robust-3.csv', index=False)
+        # intialize the tree
+        self.B = list(range(2 ** self.max_depth - 1))
+        self.T = list(range(2 ** self.max_depth - 1, 2 ** (self.max_depth + 1) - 1))
+        self.A = [self.tree_ancestor(n) for n in self.B + self.T]
 
-                model = MaxFlow_OCT(depth, alpha)
-                tick = time.time()
-                model.stable_fit_CP(x_train, y_train, N=N)
-                soctcp_t = time.time() - tick
-                soctcp_train = model.eval(x_train, y_train)
-                soctcp_test = model.eval(x_test, y_test)
-                print('SOCT Train: {:.2f}, Test: {:.2f}'.format(soctcp_train, soctcp_test))
+    def tree_children(self, node):
+        '''
+        given a node, return its left and right children in the tree
+        :param node:
+        :return:
+        '''
 
-                rec_soctcp.append([dataset, depth, alpha, seed, soctcp_train, soctcp_test, soctcp_t])
-                df = pd.DataFrame(rec_soctcp, columns=['instance', 'depth', 'alpha', 'seed',
-                                                    'Train', 'Test', 'Time'])
-                df.to_csv('./res/SOCT_CP-3.csv', index=False)
+        return 2 * node + 1, 2 * node + 2
+
+    def tree_parent(self, node):
+
+        if node == 0:
+            return None
+        elif node % 2 == 1:
+            return int(node // 2)
+        else:
+            return int(node // 2) - 1
+
+    def tree_ancestor(self, node):
+        '''
+        find the acesestor of the given node in the tree
+        :param node:
+        :return:
+        '''
+
+        ancestor = []
+        parent = self.tree_parent(node)
+
+        while parent is not None:
+            ancestor.append(parent)
+            parent = self.tree_parent(parent)
+
+        return ancestor
+
+    def tree_construction(self):
+
+        b_val = self.master.getAttr('x', self.b)
+        w_val = self.master.getAttr('x', self.w)
+
+        self.branches = {n: f for n in self.B for f in self.F if b_val[n,f] >= 0.999}
+        self.labels = {n: k for n in self.B + self.T for k in self.K if w_val[n, k] >= 0.999}
+
+    def _calBaseline(self, y):
+        """
+        obtain baseline accuracy by simply predicting the most popular class
+        """
+        mode = stats.mode(y)[0][0]
+        return np.sum(y == mode)
+
+    @staticmethod
+    def min_cut(model, where):
+        if where == gp.GRB.Callback.MIPSOL:
+            b_val = model.cbGetSolution(model._b)
+            w_val = model.cbGetSolution(model._w)
+            p_val = model.cbGetSolution(model._p)
+            g_val = model.cbGetSolution(model._g)
+
+            for i in model._I:
+                S, dir = [], []
+                n = 0
+
+                while (p_val[n] <= 0.9):
+                    S.append(n)
+                    if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
+                        n = 2 * n + 1
+                        dir.append(0)
+                    elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
+                        n = 2 * n + 2
+                        dir.append(1)
+                    else:
+                        raise ValueError
+
+                S.append(n)
+
+                if g_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
+                    if n in model._B:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i,f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._b[n, f] for f in model._F) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+                    else:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+
+    @staticmethod
+    def stable_robust_min_cut(model, where):
+        if where == gp.GRB.Callback.MIPSOL:
+            b_val = model.cbGetSolution(model._b)
+            w_val = model.cbGetSolution(model._w)
+            p_val = model.cbGetSolution(model._p)
+            theta_val = model.cbGetSolution(model._theta)
+            u_val = model.cbGetSolution(model._u)
+
+            for i in model._I:
+                S, dir = [], []
+                n = 0
+
+                while (n in model._B) and (p_val[n] == 0):
+                    S.append(n)
+                    if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
+                        n = 2 * n + 1
+                        dir.append(0)
+                    elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
+                        n = 2 * n + 2
+                        dir.append(1)
+
+                S.append(n)
+
+                # print(theta_val, u_val[i], np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]))
+                if theta_val - u_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
+                    if n in model._B:
+                        model.cbLazy(model._theta - model._u[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._b[n, f] for f in model._F) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+                    else:
+                        model.cbLazy(model._theta - model._u[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+
+    @staticmethod
+    def stable_CP_min_cut(model, where):
+        if where == gp.GRB.Callback.MIPSOL:
+            b_val = model.cbGetSolution(model._b)
+            w_val = model.cbGetSolution(model._w)
+            p_val = model.cbGetSolution(model._p)
+            g_val = model.cbGetSolution(model._g)
+            t_val = model.cbGetSolution(model._t)
+
+            miss = []
+            arr = []
+            counter = 0
+
+            for i in model._I:
+                S, dir = [], []
+                n = 0
+
+                while (p_val[n] <= 0.9):
+                    S.append(n)
+                    if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
+                        n = 2 * n + 1
+                        dir.append(0)
+                    elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
+                        n = 2 * n + 2
+                        dir.append(1)
+                    else:
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+                        print('Weird')
+
+                S.append(n)
+
+                if np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) <= 0.1:
+                    miss.append(i)
+                else:
+                    arr.append(i)
+
+                if g_val[i] > np.sum([w_val[n, k] for k in model._K if model._Y[i] == k]) + 0.1:
+                    counter += 1
+                    if n in model._B:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i,f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._b[n, f] for f in model._F) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+                    else:
+                        model.cbLazy(model._g[i] <=
+                                     gp.quicksum(model._b[val, f]
+                                                 for idx, val in enumerate(S[:-1])
+                                                 for f in model._F
+                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                     gp.quicksum(model._w[j, k]
+                                                 for j in S for k in model._K
+                                                 if model._Y[i] == k)
+                                     )
+
+            rhs = model._N - len(miss)
+            if t_val > rhs and counter == 0:
+                if rhs > 0:
+                    choice = np.random.choice(arr, rhs, replace = False)
+                    model.cbLazy(
+                        model._t <= gp.quicksum(model._g[i] for i in choice) + gp.quicksum(model._g[i] for i in miss))
+                else:
+                    choice = np.random.choice(miss, model._N, replace=False)
+                    model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in choice))
+
+    def fit(self, x, y):
+        '''
+        Fit the classification tree
+        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
+        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
+        :return:
+        '''
+
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y)+1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name = 'branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               ,name = 'label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * self.g.sum() - self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._g = self.g
+        self.master.optimize(self.min_cut)
+
+        # self.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # elf.master.display()
+
+    def stable_fit_robust(self, x, y, N):
+        '''
+
+        :param x:
+        :param y:
+        :param N:
+        :return:
+        '''
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y) + 1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        self.u = self.master.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
+        self.theta = self.master.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
+
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name='branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               , name='label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * (N * self.theta - self.u.sum()) - \
+              self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._u = self.u
+        self.master._theta = self.theta
+
+        self.master.optimize(self.stable_robust_min_cut)
+
+        # elf.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # self.master.display()
+
+    def stable_fit_CP(self, x, y, N):
+
+        self.x = x
+        self.y = y
+        self.n, self.m = self.x.shape
+
+        # the number of distinct labels
+        self.K = list(range(np.max(self.y) + 1))
+        # the set of training data
+        self.I = list(range(self.n))
+        # the set of features
+        self.F = list(range(self.m))
+
+        # intialize the master problem
+        self.master = gp.Model('master')
+        self.master.Params.outputFlag = 0
+        self.master.Params.timeLimit = self.timeLimit
+
+        # add decision variables
+        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        self.g = self.master.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
+
+        # add constraints
+        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
+                                + self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.B),
+                               name='branching_nodes')
+
+        self.master.addConstrs((self.p[n]
+                                + gp.quicksum(self.p[m] for m in self.A[n])
+                                == 1
+                                for n in self.T),
+                               name='terminal_nodes')
+
+        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
+                                for n in self.B + self.T)
+                               , name='label_assignment')
+
+        # set objective function
+        baseline = self._calBaseline(y)
+        obj = 1/baseline * self.t - self.alpha * self.b.sum()
+        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+
+        # enable lazy cuts
+        self.master.Params.lazyConstraints = 1
+        self.master._I = self.I
+        self.master._B = self.B
+        self.master._T = self.T
+        self.master._F = self.F
+        self.master._X = self.x
+        self.master._Y = self.y
+        self.master._K = self.K
+        self.master._N = N
+
+        self.master._b = self.b
+        self.master._w = self.w
+        self.master._p = self.p
+        self.master._g = self.g
+        self.master._t = self.t
+        self.master.optimize(self.stable_CP_min_cut)
+
+        # self.master.display()
+        # print(self.master.printAttr('X'))
+        self.tree_construction()
+        # print(self.master.ObjVal)
+        # self.master.Params.outputFlag = 1
+        # elf.master.display()
+
+    def predict(self, x):
+
+        pred = []
+        for val in x:
+            n = 0
+            while n not in self.labels:
+                f = self.branches[n]
+                if val[f] == 0:
+                    n = n * 2 + 1
+                else:
+                    n = n * 2 + 2
+            pred.append(self.labels[n])
+        return np.array(pred)
+
+    def eval(self, x, y, metric = 'accuracy'):
+
+        y_pred = self.predict(x)
+        if metric == 'accuracy':
+            n_corr = (y_pred == y).sum()
+            return n_corr / len(y)
+
+        return None
+
+if __name__ == '__main__':
+
+    seeds = [31, 41, 51, 61, 71]
+    depths = [2]
+    datasets = ['monk1', 'breast-cancer', 'car_evaluation', 'hayes-roth', 'house-votes-84',
+                'soybean-small', 'spect', 'tic-tac-toe', 'monk1', 'monk2', 'monk3']
+    alphas = [0, 0.01, 0.1]
+
+    records = []
+    repeat = 1
+
+    # records = pd.read_csv('./res/stable_OCT.csv').values.tolist()
+    print(records)
+
+    for seed in seeds[1:]:
+        for depth in depths:
+            for dataset in datasets:
+                for alpha in alphas:
+
+                    args = {'max_depth': depth, 'alpha': alpha}
+                    x_train, x_test, y_train, y_test = dataloader(dataset, seed)
+                    N = int(len(y_train) * 0.7)
+
+                    print('\nTrain: {}, Test: {}, N: {}'.format(len(y_train), len(y_test), N))
+
+                    model = MaxFlow_OCT(args['max_depth'], args['alpha'])
+                    tick = time.time()
+                    model.fit(x_train, y_train)
+                    t_oct = time.time() - tick
+                    oct_train = model.eval(x_train, y_train)
+                    oct_test = model.eval(x_test, y_test)
+                    print(' OCT Train: {}, Test: {}'.format(oct_train, oct_test))
+                    print(model.branches)
+                    print(model.labels)
+
+                    model = MaxFlow_OCT(args['max_depth'], args['alpha'])
+                    tick = time.time()
+                    model.stable_fit_robust(x_train, y_train, N=N)
+                    model.getValiIdx_robust()
+                    t_soctr = time.time() - tick
+                    s_octr_train = model.eval(x_train, y_train)
+                    s_octr_test = model.eval(x_test, y_test)
+                    print('SOCTR Train: {}, Test: {}'.format(s_octr_train, s_octr_test))
+                    # print(model.branches)
+                    # print(model.labels)
+
+                    model = MaxFlow_OCT(args['max_depth'], args['alpha'])
+                    tick = time.time()
+                    model.stable_fit_CP(x_train, y_train, N=N)
+                    t_soct = time.time() - tick
+                    s_oct_train = model.eval(x_train, y_train)
+                    s_oct_test = model.eval(x_test, y_test)
+                    print('SOCT Train: {}, Test: {}'.format(s_oct_train, s_oct_test))
+                    # print(model.branches)
+                    # print(model.labels)
+
+                    model = naive_model()
+                    model.fit(x_train, y_train)
+                    naive_train = model.score(x_train, y_train)
+                    naive_test = model.score(x_test, y_test)
+                    print('Naive Train: {}, Test: {}'.format(naive_train, naive_test))
+
+                    records.append([dataset, depth, alpha, seed,
+                                    oct_train, s_oct_train, s_octr_train,
+                                    oct_test, s_oct_test, s_octr_test,
+                                    t_oct, t_soct, t_soctr])
+
+                    df = pd.DataFrame(records, columns = ['instance', 'depth', 'alpha', 'seed',
+                                                          'OCT Train', 'SOCT Train', 'SOCTR Train',
+                                                          'OCT Test', 'SOCT Test', 'SOCTR Test',
+                                                          'OCT_Time', 'SOCT_Time', 'SOCTR_Time'])
+                    df.to_csv('./res/stable_OCT.csv', index = False)
+
+
+    # print(df[['OCT Test', 'SOCT Test', 'SOCTR Test', 'Naive Test']])
+
+    # print(model.predict(x_train))
+    # print(y_train)
+    # print(model.branches)
+    # print(model.labels)
+    # print('train: ', model.eval(x_train, y_train))
+    # print('test: ', model.eval(x_test, y_test))
