@@ -18,6 +18,7 @@ class binOptimalDecisionTreeClassifier:
         self.timelimit = timelimit
         self.output = output
         self.trained = False
+        self.optgap = None
 
     def fit(self, x, y):
         """
@@ -33,6 +34,7 @@ class binOptimalDecisionTreeClassifier:
         # solve MIP
         m, e, f, l, p, q = self._buildMIP(x, y)
         m.optimize()
+        self.optgap = m.MIPGap
 
         n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
         b_index = n_index[:-2**self.max_depth] # branch nodes

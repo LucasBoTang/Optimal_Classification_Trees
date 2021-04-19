@@ -18,6 +18,7 @@ class optimalDecisionTreeClassifier:
         self.timelimit = timelimit
         self.output = output
         self.trained = False
+        self.optgap = None
 
     def fit(self, x, y):
         """
@@ -32,6 +33,7 @@ class optimalDecisionTreeClassifier:
         # solve MIP
         m, a, b, c, d = self._buildMIP(x/self.scales, y)
         m.optimize()
+        self.optgap = m.MIPGap
 
         # get parameters
         self._a = {ind:a[ind].x for ind in a}

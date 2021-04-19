@@ -13,6 +13,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.timelimit = timelimit
         self.output = output
         self.trained = False
+        self.optgap = None
 
         # intialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
@@ -90,6 +91,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master._p = self.p
         self.master._g = self.g
         self.master.optimize(self.min_cut)
+        self.optgap = self.master.MIPGap
 
         # self.master.display()
         # print(self.master.printAttr('X'))
@@ -173,6 +175,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master._theta = self.theta
 
         self.master.optimize(self.stable_robust_min_cut)
+        self.optgap = self.master.MIPGap
 
         # elf.master.display()
         # print(self.master.printAttr('X'))
@@ -254,6 +257,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.master._g = self.g
         self.master._t = self.t
         self.master.optimize(self.stable_CP_min_cut)
+        self.optgap = self.master.MIPGap
 
         # self.master.display()
         # print(self.master.printAttr('X'))
