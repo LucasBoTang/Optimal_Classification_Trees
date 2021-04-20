@@ -21,8 +21,8 @@ class binOptimalDecisionTreeClassifier:
         self.optgap = None
 
         self.n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)] # nodes
-        self.b_index = n_index[:-2**self.max_depth] # branch nodes
-        self.l_index = n_index[-2**self.max_depth:] # leaf nodes
+        self.b_index = self.n_index[:-2**self.max_depth] # branch nodes
+        self.l_index = self.n_index[-2**self.max_depth:] # leaf nodes
 
     def fit(self, x, y):
         """
@@ -56,7 +56,7 @@ class binOptimalDecisionTreeClassifier:
 
         # get splition critera
         self.split = {}
-        for t in b_index:
+        for t in self.b_index:
             for j in range(self.p):
                 if f[t,j].x > 1e-3:
                     feature = j
@@ -77,12 +77,9 @@ class binOptimalDecisionTreeClassifier:
         # delete columns
         x = np.delete(x, self.delete_cols, axis=1)
 
-        # leaf nodes
-        l_index = [i for i in range(2 ** self.max_depth, 2 ** (self.max_depth + 1))]
-
         # leaf label
         labelmap = {}
-        for t in l_index:
+        for t in self.l_index:
             for k in self.labels:
                 if self._p[t,k] >= 1e-2:
                     labelmap[t] = k
@@ -90,7 +87,7 @@ class binOptimalDecisionTreeClassifier:
         y_pred = []
         for xi in x:
             t = 1
-            while t not in l_index:
+            while t not in self.l_index:
                 j, threshold = self.split[t]
                 right = (xi[j] >= threshold)
                 if right:
@@ -106,11 +103,6 @@ class binOptimalDecisionTreeClassifier:
         """
         build MIP formulation for Optimal Decision Tree
         """
-        # node index
-        n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
-        b_index = n_index[:-2**self.max_depth] # branch nodes
-        l_index = n_index[-2**self.max_depth:] # leaf nodes
-
         # calculate baseline accuracy
         baseline = self._calBaseline(y)
 
@@ -129,27 +121,27 @@ class binOptimalDecisionTreeClassifier:
         m.modelSense = GRB.MINIMIZE
 
         # varibles
-        e = m.addVars(l_index, self.labels, vtype=GRB.CONTINUOUS, name='e') # leaf node misclassfication
-        f = m.addVars(b_index, self.p, vtype=GRB.BINARY, name='f') # splitting feature
-        l = m.addVars(self.n, l_index, vtype=GRB.CONTINUOUS, name='z') # leaf node assignment
-        p = m.addVars(l_index, self.labels, vtype=GRB.BINARY, name='p') # node prediction
-        q = m.addVars(b_index, self.bin_num, vtype=GRB.BINARY, name='q') # threshold selection
+        e = m.addVars(self.l_index, self.labels, vtype=GRB.CONTINUOUS, name='e') # leaf node misclassfication
+        f = m.addVars(self.b_index, self.p, vtype=GRB.BINARY, name='f') # splitting feature
+        l = m.addVars(self.n, self.l_index, vtype=GRB.CONTINUOUS, name='z') # leaf node assignment
+        p = m.addVars(self.l_index, self.labels, vtype=GRB.BINARY, name='p') # node prediction
+        q = m.addVars(self.b_index, self.bin_num, vtype=GRB.BINARY, name='q') # threshold selection
         if self.min_samples_split:
-            a = m.addVars(l_index, vtype=GRB.BINARY, name='a') # leaf node activation
+            a = m.addVars(self.l_index, vtype=GRB.BINARY, name='a') # leaf node activation
 
         # objective function
         m.setObjective(e.sum() / baseline)
 
         # constraints
-        m.addConstrs(f.sum(t, '*') == 1 for t in b_index)
+        m.addConstrs(f.sum(t, '*') == 1 for t in self.b_index)
         m.addConstrs(l.sum(r, '*') == 1 for r in range(self.n))
-        m.addConstrs(p.sum(t, '*') == 1 for t in l_index)
+        m.addConstrs(p.sum(t, '*') == 1 for t in self.l_index)
         for j in range(self.p):
             for b in self._getBins(0, len(self.thresholds[j])-1):
                 # left
                 lb, ub = self.thresholds[j][b.ur[0]], self.thresholds[j][b.ur[1]]
                 M = np.sum(np.logical_and(x[:,j] >= lb, x[:,j] <= ub))
-                for t in b_index:
+                for t in self.b_index:
                     expr = M * f[t,j]
                     expr += quicksum(quicksum(l[i,s]
                                               for s in self. _getLeftLeafs(t))
@@ -165,7 +157,7 @@ class binOptimalDecisionTreeClassifier:
                 # right
                 lb, ub = self.thresholds[j][b.lr[0]], self.thresholds[j][b.lr[1]]
                 M = np.sum(np.logical_and(x[:,j] >= lb, x[:,j] <= ub))
-                for t in b_index:
+                for t in self.b_index:
                     expr = M * f[t,j]
                     expr += quicksum(quicksum(l[i,s]
                                               for s in self. _getRightLeafs(t))
@@ -188,8 +180,8 @@ class binOptimalDecisionTreeClassifier:
                                   for i in range(self.n) if x[i,j] < self.thresholds[j][0])
                          <=
                          M
-                         for t in b_index)
-        for t in l_index:
+                         for t in self.b_index)
+        for t in self.l_index:
             for c in self.labels:
                 M = np.sum(y == c)
                 l_sum = 0
@@ -198,8 +190,8 @@ class binOptimalDecisionTreeClassifier:
                         l_sum += l[i,t]
                 m.addConstr(l_sum - M * p[t,c] <= e[t,c])
         if self.min_samples_split:
-            m.addConstrs(l[i,t] <= a[t] for t in l_index for i in range(self.n))
-            m.addConstrs(l.sum('*', t) >= self.min_samples_split * a[t] for t in l_index)
+            m.addConstrs(l[i,t] <= a[t] for t in self.l_index for i in range(self.n))
+            m.addConstrs(l.sum('*', t) >= self.min_samples_split * a[t] for t in self.l_index)
 
         return m, e, f, l, p, q
 
@@ -248,11 +240,9 @@ class binOptimalDecisionTreeClassifier:
         """
         get leaves under the left branch
         """
-        n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
-        l_index = n_index[-2**self.max_depth:]
         tl = t * 2
         ll_index = []
-        for t in l_index:
+        for t in self.l_index:
             tp = t
             while tp:
                 if tp == tl:
@@ -264,11 +254,9 @@ class binOptimalDecisionTreeClassifier:
         """
         get leaves under the left branch
         """
-        n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
-        l_index = n_index[-2**self.max_depth:]
         tr = t * 2 + 1
         rl_index = []
-        for t in l_index:
+        for t in self.l_index:
             tp = t
             while tp:
                 if tp == tr:

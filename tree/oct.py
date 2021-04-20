@@ -20,6 +20,11 @@ class optimalDecisionTreeClassifier:
         self.trained = False
         self.optgap = None
 
+        # node index
+        self.n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
+        self.b_index = self.n_index[:-2**self.max_depth] # branch nodes
+        self.l_index = self.n_index[-2**self.max_depth:] # leaf nodes
+
     def fit(self, x, y):
         """
         fit training data
@@ -57,12 +62,9 @@ class optimalDecisionTreeClassifier:
         """
         assert self.trained, 'This optimalDecisionTreeClassifier instance is not fitted yet.'
 
-        # leaf nodes
-        l_index = [i for i in range(2 ** self.max_depth, 2 ** (self.max_depth + 1))]
-
         # leaf label
         labelmap = {}
-        for t in l_index:
+        for t in self.l_index:
             for k in self.labels:
                 if self._c[k,t] >= 1e-2:
                     labelmap[t] = k
@@ -70,7 +72,7 @@ class optimalDecisionTreeClassifier:
         y_pred = []
         for xi in x/self.scales:
             t = 1
-            while t not in l_index:
+            while t not in self.l_index:
                 right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) >= self._b[t])
                 if right:
                     t = 2 * t + 1
@@ -86,11 +88,6 @@ class optimalDecisionTreeClassifier:
         """
         build MIP formulation for Optimal Decision Tree
         """
-        # node index
-        n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
-        b_index = n_index[:-2**self.max_depth] # branch nodes
-        l_index = n_index[-2**self.max_depth:] # leaf nodes
-
         # create a model
         m = Model('m')
 
@@ -106,15 +103,15 @@ class optimalDecisionTreeClassifier:
         m.modelSense = GRB.MINIMIZE
 
         # varibles
-        a = m.addVars(self.p, b_index, vtype=GRB.BINARY, name='a') # splitting feature
-        b = m.addVars(b_index, vtype=GRB.CONTINUOUS, name='b') # splitting threshold
-        c = m.addVars(self.labels, l_index, vtype=GRB.BINARY, name='c') # node prediction
-        d = m.addVars(b_index, vtype=GRB.BINARY, name='d') # splitting option
-        z = m.addVars(self.n, l_index, vtype=GRB.BINARY, name='z') # leaf node assignment
-        l = m.addVars(l_index, vtype=GRB.BINARY, name='l') # leaf node activation
-        L = m.addVars(l_index, vtype=GRB.CONTINUOUS, name='L') # leaf node misclassfication
-        M = m.addVars(self.labels, l_index, vtype=GRB.CONTINUOUS, name='M') # leaf node samples with label
-        N = m.addVars(l_index, vtype=GRB.CONTINUOUS, name='N') # leaf node samples
+        a = m.addVars(self.p, self.b_index, vtype=GRB.BINARY, name='a') # splitting feature
+        b = m.addVars(self.b_index, vtype=GRB.CONTINUOUS, name='b') # splitting threshold
+        c = m.addVars(self.labels, self.l_index, vtype=GRB.BINARY, name='c') # node prediction
+        d = m.addVars(self.b_index, vtype=GRB.BINARY, name='d') # splitting option
+        z = m.addVars(self.n, self.l_index, vtype=GRB.BINARY, name='z') # leaf node assignment
+        l = m.addVars(self.l_index, vtype=GRB.BINARY, name='l') # leaf node activation
+        L = m.addVars(self.l_index, vtype=GRB.CONTINUOUS, name='L') # leaf node misclassfication
+        M = m.addVars(self.labels, self.l_index, vtype=GRB.CONTINUOUS, name='M') # leaf node samples with label
+        N = m.addVars(self.l_index, vtype=GRB.CONTINUOUS, name='N') # leaf node samples
 
         # calculate baseline accuracy
         baseline = self._calBaseline(y)
@@ -128,18 +125,18 @@ class optimalDecisionTreeClassifier:
 
         # constraints
         # (20)
-        m.addConstrs(L[t] >= N[t] - M[k,t] - self.n * (1 - c[k,t]) for t in l_index for k in self.labels)
+        m.addConstrs(L[t] >= N[t] - M[k,t] - self.n * (1 - c[k,t]) for t in self.l_index for k in self.labels)
         # (21)
-        m.addConstrs(L[t] <= N[t] - M[k,t] + self.n * c[k,t] for t in l_index for k in self.labels)
+        m.addConstrs(L[t] <= N[t] - M[k,t] + self.n * c[k,t] for t in self.l_index for k in self.labels)
         # (17)
         m.addConstrs(quicksum(((1 if y[i] == k else -1) + 1) * z[i,t] for i in range(self.n)) / 2 == M[k,t]
-                     for t in l_index for k in self.labels)
+                     for t in self.l_index for k in self.labels)
         # (16)
-        m.addConstrs(z.sum('*', t) == N[t] for t in l_index)
+        m.addConstrs(z.sum('*', t) == N[t] for t in self.l_index)
         # (18)
-        m.addConstrs(c.sum('*', t) == 1 for t in l_index)
+        m.addConstrs(c.sum('*', t) == 1 for t in self.l_index)
         # (13) and (14)
-        for t in l_index:
+        for t in self.l_index:
             left = (t % 2 == 0)
             ta = t // 2
             while ta != 0:
@@ -160,15 +157,15 @@ class optimalDecisionTreeClassifier:
         # (8)
         m.addConstrs(z.sum(i, '*') == 1 for i in range(self.n))
         # (6)
-        m.addConstrs(z[i,t] <= l[t] for t in l_index for i in range(self.n))
+        m.addConstrs(z[i,t] <= l[t] for t in self.l_index for i in range(self.n))
         # (7)
-        m.addConstrs(z.sum('*', t) >= self.min_samples_split * l[t] for t in l_index)
+        m.addConstrs(z.sum('*', t) >= self.min_samples_split * l[t] for t in self.l_index)
         # (2)
-        m.addConstrs(a.sum('*', t) == d[t] for t in b_index)
+        m.addConstrs(a.sum('*', t) == d[t] for t in self.b_index)
         # (3)
-        m.addConstrs(b[t] <= d[t] for t in b_index)
+        m.addConstrs(b[t] <= d[t] for t in self.b_index)
         # (5)
-        m.addConstrs(d[t] <= d[t//2] for t in b_index if t != 1)
+        m.addConstrs(d[t] <= d[t//2] for t in self.b_index if t != 1)
 
         return m, a, b, c, d
 
