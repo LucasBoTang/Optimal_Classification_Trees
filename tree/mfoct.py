@@ -18,254 +18,259 @@ class maxFlowOptimalDecisionTreeClassifier():
         # intialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
         self.T = list(range(2 ** self.max_depth - 1, 2 ** (self.max_depth + 1) - 1))
-        self.A = [self.tree_ancestor(n) for n in self.B + self.T]
+        self.A = [self._tree_ancestor(n) for n in self.B + self.T]
 
     def fit(self, x, y):
         """
         fit training data
-        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
-        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
         """
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
+        # data size
+        self.n, self.m = x.shape
         if self.output:
             print('Training data include {} instances, {} features.'.format(self.n,self.m))
 
         # the number of distinct labels
-        self.K = list(range(np.max(self.y)+1))
+        self.K = list(range(np.max(y)+1))
         # the set of training data
         self.I = list(range(self.n))
         # the set of features
         self.F = list(range(self.m))
 
+        # solve MIP
+        m, b, w = self._buildMIP(x, y)
+        m.optimize(self._min_cut)
+        self.optgap = m.MIPGap
+
+        self._tree_construction(m, b, w)
+        self.trained = True
+
+    def _buildMIP(self, x, y):
+        """
+        build MIP formulation for Max-Flow Optimal Decision Tree
+        """
         # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = self.output
-        self.master.Params.LogToConsole = self.output
-        self.master.Params.timelimit = self.timelimit
+        m = gp.Model('m')
+        m.Params.outputFlag = self.output
+        m.Params.LogToConsole = self.output
+        m.Params.timelimit = self.timelimit
         # parallel
-        self.master.params.threads = 0
+        m.params.threads = 0
 
         # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
-        self.g = self.master.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
-        self.p = self.master.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
+        b = m.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        w = m.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
+        g = m.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
+        p = m.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
 
         # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name = 'branching_nodes')
+        m.addConstrs((gp.quicksum(b[n, f] for f in self.F)
+                      + p[n]
+                      + gp.quicksum(p[m] for m in self.A[n])
+                      == 1
+                      for n in self.B),
+                      name = 'branching_nodes')
 
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
+        m.addConstrs((p[n]
+                      + gp.quicksum(p[m] for m in self.A[n])
+                      == 1
+                      for n in self.T),
+                      name='terminal_nodes')
 
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               ,name = 'label_assignment')
+        m.addConstrs((gp.quicksum(w[n, k] for k in self.K) == p[n]
+                                  for n in self.B + self.T),
+                      name = 'label_assignment')
 
         # set objective function
         baseline = self._calBaseline(y)
-        obj = 1 / baseline * self.g.sum() - self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+        obj = 1 / baseline * g.sum() - self.alpha * b.sum()
+        m.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
+        m.Params.lazyConstraints = 1
+        m._I = self.I
+        m._B = self.B
+        m._T = self.T
+        m._F = self.F
+        m._X = x
+        m._Y = y
+        m._K = self.K
 
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._g = self.g
-        self.master.optimize(self.min_cut)
-        self.optgap = self.master.MIPGap
+        m._b = b
+        m._w = w
+        m._p = p
+        m._g = g
 
-        # self.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        self.trained = True
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # elf.master.display()
+        return m, b, w
 
     def stable_fit_robust(self, x, y, N):
         """
         fit training data with min-max method
-        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
-        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
         """
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
+        # data size
+        self.n, self.m = x.shape
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.m))
 
         # the number of distinct labels
-        self.K = list(range(np.max(self.y) + 1))
+        self.K = list(range(np.max(y) + 1))
         # the set of training data
         self.I = list(range(self.n))
         # the set of features
         self.F = list(range(self.m))
 
+        # solve MIP
+        m, b, w = self._buildMIP_robust(x, y, N)
+        m.optimize(self._stable_robust_min_cut)
+        self.optgap = m.MIPGap
+
+        self._tree_construction(m, b, w)
+        self.trained = True
+
+    def _buildMIP_robust(self, x, y, N):
+        """
+        build MIP formulation for Max-Flow Optimal Decision Tree with min-max method
+        """
         # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = self.output
-        self.master.Params.LogToConsole = self.output
-        self.master.Params.timelimit = self.timelimit
+        m = gp.Model('m')
+        m.Params.outputFlag = self.output
+        m.Params.LogToConsole = self.output
+        m.Params.timelimit = self.timelimit
         # parallel
-        self.master.params.threads = 0
+        m.params.threads = 0
 
         # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
-        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
-        self.u = self.master.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
-        self.theta = self.master.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
-
+        b = m.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        w = m.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        p = m.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        u = m.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
+        theta = m.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
 
         # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name='branching_nodes')
+        m.addConstrs((gp.quicksum(b[n, f] for f in self.F)
+                      + p[n]
+                      + gp.quicksum(p[m] for m in self.A[n])
+                      == 1
+                      for n in self.B),
+                      name='branching_nodes')
 
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
+        m.addConstrs((p[n]
+                     + gp.quicksum(p[m] for m in self.A[n])
+                     == 1
+                     for n in self.T),
+                     name='terminal_nodes')
 
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               , name='label_assignment')
+        m.addConstrs((gp.quicksum(w[n, k] for k in self.K) == p[n]
+                                  for n in self.B + self.T),
+                     name='label_assignment')
 
         # set objective function
         baseline = self._calBaseline(y)
-        obj = 1 / baseline * (N * self.theta - self.u.sum()) - \
-              self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+        obj = 1 / baseline * (N * theta - u.sum()) - \
+              self.alpha * b.sum()
+        m.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
+        m.Params.lazyConstraints = 1
+        m._I = self.I
+        m._B = self.B
+        m._T = self.T
+        m._F = self.F
+        m._X = x
+        m._Y = y
+        m._K = self.K
 
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._u = self.u
-        self.master._theta = self.theta
+        m._b = b
+        m._w = w
+        m._p = p
+        m._u = u
+        m._theta = theta
 
-        self.master.optimize(self.stable_robust_min_cut)
-        self.optgap = self.master.MIPGap
-
-        # elf.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        self.trained = True
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # self.master.display()
+        return m, b, w
 
     def stable_fit_CP(self, x, y, N):
         """
         fit training data with cutting plane
-        :param x: the array of features, the faetures are assumed to be binary, i.e. 0/1
-        :param y: the array of labels, the labels are assumed to be ordered integers starting from 0, i.e. 0, 1, 2, ...
         """
-        self.x = x
-        self.y = y
-        self.n, self.m = self.x.shape
+        # data size
+        self.n, self.m = x.shape
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.m))
 
         # the number of distinct labels
-        self.K = list(range(np.max(self.y) + 1))
+        self.K = list(range(np.max(y) + 1))
         # the set of training data
         self.I = list(range(self.n))
         # the set of features
         self.F = list(range(self.m))
 
+        # solve MIP
+        m, b, w = self._buildMIP_CP(x, y, N)
+        m.optimize(self._stable_CP_min_cut)
+        self.optgap = m.MIPGap
+
+        self._tree_construction(m, b, w)
+        self.trained = True
+
+    def _buildMIP_CP(self, x, y, N):
+        """
+        build MIP formulation for Max-Flow Optimal Decision Tree with min-max method
+        """
         # intialize the master problem
-        self.master = gp.Model('master')
-        self.master.Params.outputFlag = self.output
-        self.master.Params.LogToConsole = self.output
-        self.master.Params.timelimit = self.timelimit
+        m = gp.Model('m')
+        m.Params.outputFlag = self.output
+        m.Params.LogToConsole = self.output
+        m.Params.timelimit = self.timelimit
         # parallel
-        self.master.params.threads = 0
+        m.params.threads = 0
 
         # add decision variables
-        self.b = self.master.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        self.w = self.master.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
-        self.g = self.master.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
-        self.p = self.master.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
-        self.t = self.master.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
+        b = m.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
+        w = m.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        g = m.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        p = m.addVars(self.B + self.T, name='P', vtype=gp.GRB.BINARY)
+        t = m.addVar(name = 't', vtype=gp.GRB.CONTINUOUS, ub = len(y)+1, lb = 0)
 
         # add constraints
-        self.master.addConstrs((gp.quicksum(self.b[n, f] for f in self.F)
-                                + self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.B),
-                               name='branching_nodes')
+        m.addConstrs((gp.quicksum(b[n, f] for f in self.F)
+                      + p[n]
+                      + gp.quicksum(p[m] for m in self.A[n])
+                      == 1
+                      for n in self.B),
+                     name='branching_nodes')
 
-        self.master.addConstrs((self.p[n]
-                                + gp.quicksum(self.p[m] for m in self.A[n])
-                                == 1
-                                for n in self.T),
-                               name='terminal_nodes')
+        m.addConstrs((p[n]
+                      + gp.quicksum(p[m] for m in self.A[n])
+                      == 1
+                      for n in self.T),
+                     name='terminal_nodes')
 
-        self.master.addConstrs((gp.quicksum(self.w[n, k] for k in self.K) == self.p[n]
-                                for n in self.B + self.T)
-                               , name='label_assignment')
+        m.addConstrs((gp.quicksum(w[n, k] for k in self.K) == p[n]
+                                  for n in self.B + self.T),
+                     name='label_assignment')
 
         # set objective function
         baseline = self._calBaseline(y)
-        obj = 1/baseline * self.t - self.alpha * self.b.sum()
-        self.master.setObjective(obj, gp.GRB.MAXIMIZE)
+        obj = 1 / baseline * t - self.alpha * b.sum()
+        m.setObjective(obj, gp.GRB.MAXIMIZE)
 
         # enable lazy cuts
-        self.master.Params.lazyConstraints = 1
-        self.master._I = self.I
-        self.master._B = self.B
-        self.master._T = self.T
-        self.master._F = self.F
-        self.master._X = self.x
-        self.master._Y = self.y
-        self.master._K = self.K
-        self.master._N = N
+        m.Params.lazyConstraints = 1
+        m._I = self.I
+        m._B = self.B
+        m._T = self.T
+        m._F = self.F
+        m._X = x
+        m._Y = y
+        m._K = self.K
+        m._N = N
 
-        self.master._b = self.b
-        self.master._w = self.w
-        self.master._p = self.p
-        self.master._g = self.g
-        self.master._t = self.t
-        self.master.optimize(self.stable_CP_min_cut)
-        self.optgap = self.master.MIPGap
+        m._b = b
+        m._w = w
+        m._p = p
+        m._g = g
+        m._t = t
 
-        # self.master.display()
-        # print(self.master.printAttr('X'))
-        self.tree_construction()
-        self.trained = True
-        # print(self.master.ObjVal)
-        # self.master.Params.outputFlag = 1
-        # elf.master.display()
+        return m, b, w
 
     def predict(self, x):
         """
@@ -285,13 +290,13 @@ class maxFlowOptimalDecisionTreeClassifier():
             pred.append(self.labels[n])
         return np.array(pred)
 
-    def tree_children(self, node):
+    def _tree_children(self, node):
         """
         get left and right children of node in the tree
         """
         return 2 * node + 1, 2 * node + 2
 
-    def tree_parent(self, node):
+    def _tree_parent(self, node):
         """
         get parent of node in the tree
         """
@@ -302,25 +307,25 @@ class maxFlowOptimalDecisionTreeClassifier():
         else:
             return int(node // 2) - 1
 
-    def tree_ancestor(self, node):
+    def _tree_ancestor(self, node):
         """
         find the acesestor of the given node in the tree
         """
         ancestor = []
-        parent = self.tree_parent(node)
+        parent = self._tree_parent(node)
 
         while parent is not None:
             ancestor.append(parent)
-            parent = self.tree_parent(parent)
+            parent = self._tree_parent(parent)
 
         return ancestor
 
-    def tree_construction(self):
+    def _tree_construction(self, m, b, w):
         """
         construct the decision tree
         """
-        b_val = self.master.getAttr('x', self.b)
-        w_val = self.master.getAttr('x', self.w)
+        b_val = m.getAttr('x', b)
+        w_val = m.getAttr('x', w)
 
         self.branches = {n: f for n in self.B for f in self.F if b_val[n,f] >= 0.999}
         self.labels = {n: k for n in self.B + self.T for k in self.K if w_val[n, k] >= 0.999}
@@ -333,7 +338,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         return np.sum(y == mode)
 
     @staticmethod
-    def min_cut(model, where):
+    def _min_cut(model, where):
         """
         lazy constraints
         """
@@ -384,7 +389,7 @@ class maxFlowOptimalDecisionTreeClassifier():
                                      )
 
     @staticmethod
-    def stable_robust_min_cut(model, where):
+    def _stable_robust_min_cut(model, where):
         """
         lazy constraints
         """
@@ -435,7 +440,7 @@ class maxFlowOptimalDecisionTreeClassifier():
                                      )
 
     @staticmethod
-    def stable_CP_min_cut(model, where):
+    def _stable_CP_min_cut(model, where):
         """
         lazy constraints
         """

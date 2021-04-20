@@ -24,6 +24,14 @@ class optimalDecisionTreeClassifier:
         """
         fit training data
         """
+        # data size
+        self.n, self.p = x.shape
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.p))
+
+        # labels
+        self.labels = np.unique(y)
+
         # scale data
         self.scales = np.max(x, axis=0)
         for i in range(len(self.scales)):
@@ -78,17 +86,10 @@ class optimalDecisionTreeClassifier:
         """
         build MIP formulation for Optimal Decision Tree
         """
-        # data size
-        self.n, self.p = x.shape
-        if self.output:
-            print('Training data include {} instances, {} features.'.format(self.n,self.p))
-
         # node index
         n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
         b_index = n_index[:-2**self.max_depth] # branch nodes
         l_index = n_index[-2**self.max_depth:] # leaf nodes
-        # labels
-        self.labels = np.unique(y)
 
         # create a model
         m = Model('m')

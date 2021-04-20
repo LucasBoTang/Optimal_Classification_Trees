@@ -20,6 +20,10 @@ class binOptimalDecisionTreeClassifier:
         self.trained = False
         self.optgap = None
 
+        self.n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)] # nodes
+        self.b_index = n_index[:-2**self.max_depth] # branch nodes
+        self.l_index = n_index[-2**self.max_depth:] # leaf nodes
+
     def fit(self, x, y):
         """
         fit training data
@@ -31,14 +35,21 @@ class binOptimalDecisionTreeClassifier:
                 self.delete_cols.append(j)
         x = np.delete(x, self.delete_cols, axis=1)
 
+        # data size
+        self.n, self.p = x.shape
+        if self.output:
+            print('Training data include {} instances, {} features.'.format(self.n,self.p))
+
+        # labels
+        self.labels = np.unique(y)
+        # thresholds
+        self.thresholds = self._getThresholds(x, y)
+        self.bin_num = int(np.ceil(np.log2(max([len(threshold) for threshold in self.thresholds]))))
+
         # solve MIP
         m, e, f, l, p, q = self._buildMIP(x, y)
         m.optimize()
         self.optgap = m.MIPGap
-
-        n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
-        b_index = n_index[:-2**self.max_depth] # branch nodes
-        l_index = n_index[-2**self.max_depth:] # leaf nodes
 
         # get parameters
         self._p = {ind:p[ind].x for ind in p}
@@ -95,20 +106,10 @@ class binOptimalDecisionTreeClassifier:
         """
         build MIP formulation for Optimal Decision Tree
         """
-        # data size
-        self.n, self.p = x.shape
-        if self.output:
-            print('Training data include {} instances, {} features.'.format(self.n,self.p))
-
         # node index
         n_index = [i+1 for i in range(2 ** (self.max_depth + 1) - 1)]
         b_index = n_index[:-2**self.max_depth] # branch nodes
         l_index = n_index[-2**self.max_depth:] # leaf nodes
-        # labels
-        self.labels = np.unique(y)
-        # thresholds
-        self.thresholds = self._getThresholds(x, y)
-        self.bin_num = int(np.ceil(np.log2(max([len(threshold) for threshold in self.thresholds]))))
 
         # calculate baseline accuracy
         baseline = self._calBaseline(y)
