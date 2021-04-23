@@ -39,9 +39,7 @@ class optimalDecisionTreeClassifier:
 
         # scale data
         self.scales = np.max(x, axis=0)
-        for i in range(len(self.scales)):
-            if self.scales[i] == 0:
-                self.scales[i] = 1
+        self.scales[self.scales == 0] = 1
 
         # solve MIP
         m, a, b, c, d = self._buildMIP(x/self.scales, y)
@@ -73,7 +71,7 @@ class optimalDecisionTreeClassifier:
         for xi in x/self.scales:
             t = 1
             while t not in self.l_index:
-                right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) >= self._b[t])
+                right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) + 1e-5 >= self._b[t])
                 if right:
                     t = 2 * t + 1
                 else:
@@ -134,7 +132,7 @@ class optimalDecisionTreeClassifier:
         # (16)
         m.addConstrs(z.sum('*', t) == N[t] for t in self.l_index)
         # (18)
-        m.addConstrs(c.sum('*', t) == 1 for t in self.l_index)
+        m.addConstrs(c.sum('*', t) == l[t] for t in self.l_index)
         # (13) and (14)
         for t in self.l_index:
             left = (t % 2 == 0)
