@@ -71,7 +71,7 @@ class optimalDecisionTreeClassifier:
         for xi in x/self.scales:
             t = 1
             while t not in self.l_index:
-                right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) + 1e-5 >= self._b[t])
+                right = (sum([self._a[j,t] * xi[j] for j in range(self.p)]) + 1e-9 >= self._b[t])
                 if right:
                     t = 2 * t + 1
                 else:
