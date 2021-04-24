@@ -163,4 +163,7 @@ def loadMonks(dataname):
     df_test = pd.read_csv('./data/monks/monks-{}.test'.format(index), header=None, delimiter=' ')
     x_train, y_train = df_train[[2,3,4,5,6,7]], df_train[1]
     x_test, y_test = df_test[[2,3,4,5,6,7]], df_test[1]
-    return np.concatenate((x_train, x_test), axis=0), np.concatenate((y_train, y_test), axis=0)
+    x = np.concatenate((x_train, x_test), axis=0)
+    y = np.concatenate((y_train, y_test), axis=0)
+    x = oneHot(x)
+    return x, y
