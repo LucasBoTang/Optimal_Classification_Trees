@@ -6,7 +6,8 @@ from collections import namedtuple
 
 import numpy as np
 from scipy import stats
-from gurobipy import *
+import gurobipy as gp
+from gurobipy import GRB
 
 class binOptimalDecisionTreeClassifier:
     """
@@ -107,7 +108,7 @@ class binOptimalDecisionTreeClassifier:
         baseline = self._calBaseline(y)
 
         # create a model
-        m = Model('m')
+        m = gp.Model('m')
 
         # output
         m.Params.outputFlag = self.output
@@ -143,9 +144,9 @@ class binOptimalDecisionTreeClassifier:
                 M = np.sum(np.logical_and(x[:,j] >= lb, x[:,j] <= ub))
                 for t in self.b_index:
                     expr = M * f[t,j]
-                    expr += quicksum(quicksum(l[i,s]
-                                              for s in self. _getLeftLeafs(t))
-                                     for i in range(self.n) if lb <= x[i,j] <= ub)
+                    expr += gp.quicksum(gp.quicksum(l[i,s]
+                                                    for s in self. _getLeftLeafs(t))
+                                        for i in range(self.n) if lb <= x[i,j] <= ub)
                     num = 0
                     for i, ind in enumerate(b.t):
                         if ind == 0:
@@ -159,9 +160,9 @@ class binOptimalDecisionTreeClassifier:
                 M = np.sum(np.logical_and(x[:,j] >= lb, x[:,j] <= ub))
                 for t in self.b_index:
                     expr = M * f[t,j]
-                    expr += quicksum(quicksum(l[i,s]
-                                              for s in self. _getRightLeafs(t))
-                                     for i in range(self.n) if lb <= x[i,j] <= ub)
+                    expr += gp.quicksum(gp.quicksum(l[i,s]
+                                                    for s in self. _getRightLeafs(t))
+                                        for i in range(self.n) if lb <= x[i,j] <= ub)
                     for i, ind in enumerate(b.t):
                         if ind == 1:
                             expr -= M * q[t,i]
@@ -171,13 +172,13 @@ class binOptimalDecisionTreeClassifier:
             M = np.sum(self.thresholds[j][-1] < x[:,j]) + np.sum(x[:,j] < self.thresholds[j][0])
             m.addConstrs(M * f[t,j]
                          +
-                         quicksum(quicksum(l[i,s]
-                                           for s in self. _getLeftLeafs(t))
-                                  for i in range(self.n) if self.thresholds[j][-1] < x[i,j])
+                         gp.quicksum(gp.quicksum(l[i,s]
+                                                 for s in self. _getLeftLeafs(t))
+                                     for i in range(self.n) if self.thresholds[j][-1] < x[i,j])
                          +
-                         quicksum(quicksum(l[i,s]
-                                           for s in self. _getRightLeafs(t))
-                                  for i in range(self.n) if x[i,j] < self.thresholds[j][0])
+                         gp.quicksum(gp.quicksum(l[i,s]
+                                                 for s in self. _getRightLeafs(t))
+                                     for i in range(self.n) if x[i,j] < self.thresholds[j][0])
                          <=
                          M
                          for t in self.b_index)

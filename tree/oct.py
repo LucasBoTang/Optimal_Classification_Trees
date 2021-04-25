@@ -4,7 +4,8 @@
 
 import numpy as np
 from scipy import stats
-from gurobipy import *
+import gurobipy as gp
+from gurobipy import GRB
 import dataset
 
 class optimalDecisionTreeClassifier:
@@ -87,7 +88,7 @@ class optimalDecisionTreeClassifier:
         build MIP formulation for Optimal Decision Tree
         """
         # create a model
-        m = Model('m')
+        m = gp.Model('m')
 
         # output
         m.Params.outputFlag = self.output
@@ -127,8 +128,8 @@ class optimalDecisionTreeClassifier:
         # (21)
         m.addConstrs(L[t] <= N[t] - M[k,t] + self.n * c[k,t] for t in self.l_index for k in self.labels)
         # (17)
-        m.addConstrs(quicksum(((1 if y[i] == k else -1) + 1) * z[i,t] for i in range(self.n)) / 2 == M[k,t]
-                     for t in self.l_index for k in self.labels)
+        m.addConstrs(gp.quicksum((y[i] == k) * z[i,t] for i in range(self.n)) == M[k,t]
+                                 for t in self.l_index for k in self.labels)
         # (16)
         m.addConstrs(z.sum('*', t) == N[t] for t in self.l_index)
         # (18)
@@ -139,14 +140,14 @@ class optimalDecisionTreeClassifier:
             ta = t // 2
             while ta != 0:
                 if left:
-                    m.addConstrs(quicksum(a[j,ta] * (x[i,j] + min_dis[j]) for j in range(self.p))
+                    m.addConstrs(gp.quicksum(a[j,ta] * (x[i,j] + min_dis[j]) for j in range(self.p))
                                  +
                                  (1 + np.max(min_dis)) * (1 - d[ta])
                                  <=
                                  b[ta] + (1 + np.max(min_dis)) * (1 - z[i,t])
                                  for i in range(self.n))
                 else:
-                    m.addConstrs(quicksum(a[j,ta] * x[i,j] for j in range(self.p))
+                    m.addConstrs(gp.quicksum(a[j,ta] * x[i,j] for j in range(self.p))
                                  >=
                                  b[ta] - (1 - z[i,t])
                                  for i in range(self.n))
