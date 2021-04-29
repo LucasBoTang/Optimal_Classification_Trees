@@ -140,7 +140,7 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | tic-tac-toe    | 4     | 100.00% | 100.00% | 26.86%  |
 | tic-tac-toe    | 5     | 100.00% | 100.00% | 31.55%  |
 
-#### Solution Time for OCT, binOCT, flowOCT and CART
+#### Training Time for OCT, binOCT, flowOCT and CART
 | instance       | depth | OCT     | binOCT  | flowOCT | CART  |
 |----------------|-------|---------|---------|---------|-------|
 | balance-scale  | 2     | 324.485 | 6.703   | 1.948   | 0.016 |
@@ -188,65 +188,18 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | tic-tac-toe    | 4     | 606.554 | 605.508 | 600.159 | 0.001 |
 | tic-tac-toe    | 5     | 615.277 | 621.808 | 600.446 | 0.001 |
 
-#### Average Out-of-Sample Prediction Accuracy over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
-| instance       | depth | OCT    | binOCT   | flowOCT | Sklearn |
-|----------------|-------|--------|--------|---------|---------|
-| balance-scale  | 2     | 0.6638 | 0.6497 | 0.6667  | 0.6285  |
-| balance-scale  | 3     | 0.6667 | 0.6603 | 0.6900  | 0.6285  |
-| balance-scale  | 4     | 0.6971 | 0.6624 | 0.6907  | 0.6285  |
-| balance-scale  | 5     | 0.6624 | 0.5754 | 0.6858  | 0.6285  |
-| breast-cancer  | 2     | 0.6873 | 0.6857 | 0.6825  | 0.7095  |
-| breast-cancer  | 3     | 0.7048 | 0.7143 | 0.6952  | 0.7095  |
-| breast-cancer  | 4     | 0.6825 | 0.7048 | 0.7095  | 0.7095  |
-| breast-cancer  | 5     | 0.6921 | 0.6286 | 0.7016  | 0.7095  |
-| car-evaluation | 2     | 0.7418 | 0.7654 | 0.7418  | 0.7739  |
-| car-evaluation | 3     | 0.7446 | 0.7863 | 0.7639  | 0.7739  |
-| car-evaluation | 4     | 0.7449 | 0.8333 | 0.7711  | 0.7739  |
-| car-evaluation | 5     | 0.7022 | 0.8279 | 0.7631  | 0.7739  |
-| hayes-roth     | 2     | 0.5806 | 0.5500 | 0.5972  | 0.5250  |
-| hayes-roth     | 3     | 0.7028 | 0.7000 | 0.6861  | 0.5250  |
-| hayes-roth     | 4     | 0.7417 | 0.6417 | 0.7611  | 0.5250  |
-| hayes-roth     | 5     | 0.7556 | 0.6167 | 0.7750  | 0.5250  |
-| house-votes-84 | 2     | 0.9713 | 0.9655 | 0.9713  | 0.9713  |
-| house-votes-84 | 3     | 0.9674 | 0.9713 | 0.9674  | 0.9713  |
-| house-votes-84 | 4     | 0.9617 | 0.9253 | 0.9617  | 0.9713  |
-| house-votes-84 | 5     | 0.9693 | 0.9598 | 0.9617  | 0.9713  |
-| monks-1        | 2     | 0.7434 | 0.7050 | 0.7442  | 0.7314  |
-| monks-1        | 3     | 0.8034 | 0.8393 | 0.8161  | 0.7314  |
-| monks-1        | 4     | 0.8457 | 0.9041 | 0.9105  | 0.7314  |
-| monks-1        | 5     | 0.8185 | 0.8993 | 0.9105  | 0.7314  |
-| monks-2        | 2     | 0.6461 | 0.6137 | 0.6468  | 0.6623  |
-| monks-2        | 3     | 0.6328 | 0.5960 | 0.6034  | 0.6623  |
-| monks-2        | 4     | 0.6313 | 0.5784 | 0.6181  | 0.6623  |
-| monks-2        | 5     | 0.6269 | 0.7660 | 0.6394  | 0.6623  |
-| monks-3        | 2     | 0.9384 | 0.8345 | 0.9664  | 0.9664  |
-| monks-3        | 3     | 0.9680 | 0.9113 | 0.9824  | 0.9664  |
-| monks-3        | 4     | 0.9824 | 0.6739 | 0.9824  | 0.9664  |
-| monks-3        | 5     | 0.9824 | 0.6835 | 0.9824  | 0.9664  |
-| soybean-small  | 2     | 0.8148 | 0.9722 | 0.9630  | 0.7778  |
-| soybean-small  | 3     | 0.9537 | 0.7500 | 0.9444  | 0.7500  |
-| soybean-small  | 4     | 0.8704 | 0.8333 | 0.9352  | 0.7500  |
-| soybean-small  | 5     | 0.8704 | 0.7222 | 0.9444  | 0.7222  |
-| spect          | 2     | 0.7993 | 0.7811 | 0.7993  | 0.7811  |
-| spect          | 3     | 0.7910 | 0.7562 | 0.7794  | 0.7811  |
-| spect          | 4     | 0.7297 | 0.7413 | 0.7844  | 0.7811  |
-| spect          | 5     | 0.7894 | 0.7214 | 0.7811  | 0.7811  |
-| tic-tac-toe    | 2     | 0.6861 | 0.6889 | 0.6903  | 0.7097  |
-| tic-tac-toe    | 3     | 0.7269 | 0.7458 | 0.7366  | 0.7097  |
-| tic-tac-toe    | 4     | 0.7417 | 0.7875 | 0.7287  | 0.7097  |
-| tic-tac-toe    | 5     | 0.7079 | 0.7944 | 0.7236  | 0.7097  |
-
-#### Average Solution over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
+#### Average Solution for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
 | instance       | flowOCT | SOCT_CP | SOCT_RB |
 |----------------|---------|---------|---------|
-| soybean-small  | 0.32    | 0.62    | 1.28    |
-| monk3          | 0.32    | 0.79    | 0.62    |
-| monk1          | 0.47    | 1.18    | 0.81    |
-| hayes-roth     | 0.67    | 4.10    | 1.23    |
-| monk2          | 0.77    | 5.81    | 2.66    |
-| house-votes-84 | 0.58    | 1.31    | 1.20    |
-| spect          | 1.80    | 5.67    | 5.14    |
-| breast-cancer  | 6.18    | 16.53   | 11.84   |
 | balance-scale  | 3.30    | 15.97   | 7.17    |
-| tic-tac-toe    | 71.50   | 246.28  | 88.11   |
+| breast-cancer  | 6.18    | 16.53   | 11.84   |
 | car_evaluation | 24.16   | 108.59  | 54.20   |
+| hayes-roth     | 0.67    | 4.10    | 1.23    |
+| house-votes-84 | 0.58    | 1.31    | 1.20    |
+| monk1          | 0.47    | 1.18    | 0.81    |
+| monk2          | 0.77    | 5.81    | 2.66    |
+| monk3          | 0.32    | 0.79    | 0.62    |
+| soybean-small  | 0.32    | 0.62    | 1.28    |
+| spect          | 1.80    | 5.67    | 5.14    |
+| tic-tac-toe    | 71.50   | 246.28  | 88.11   |
+
