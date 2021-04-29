@@ -189,7 +189,7 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | tic-tac-toe    | 5     | 615.277 | 621.808 | 600.446 | 0.001 |
 
 #### Average Out-of-Sample Prediction Accuracy over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
-| instance       | depth | OCT    | bOCT   | flowOCT | Sklearn |
+| instance       | depth | OCT    | binOCT   | flowOCT | Sklearn |
 |----------------|-------|--------|--------|---------|---------|
 | balance-scale  | 2     | 0.6638 | 0.6497 | 0.6667  | 0.6285  |
 | balance-scale  | 3     | 0.6667 | 0.6603 | 0.6900  | 0.6285  |
@@ -237,16 +237,16 @@ All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a m
 | tic-tac-toe    | 5     | 0.7079 | 0.7944 | 0.7236  | 0.7097  |
 
 #### Average Solution over 10 Trails for flowOCT and SOCT Solved with Robust Optimization and Cutting Plane Methods
-| instance       | flowOCT | SOCT_CP | SOCT_R |
-|----------------|---------|---------|--------|
-| soybean-small  | 0.32    | 0.62    | 1.28   |
-| monk3          | 0.32    | 0.79    | 0.62   |
-| monk1          | 0.47    | 1.18    | 0.81   |
-| hayes-roth     | 0.67    | 4.10    | 1.23   |
-| monk2          | 0.77    | 5.81    | 2.66   |
-| house-votes-84 | 0.58    | 1.31    | 1.20   |
-| spect          | 1.80    | 5.67    | 5.14   |
-| breast-cancer  | 6.18    | 16.53   | 11.84  |
-| balance-scale  | 3.30    | 15.97   | 7.17   |
-| tic-tac-toe    | 71.50   | 246.28  | 88.11  |
-| car_evaluation | 24.16   | 108.59  | 54.20  |
+| instance       | flowOCT | SOCT_CP | SOCT_RB |
+|----------------|---------|---------|---------|
+| soybean-small  | 0.32    | 0.62    | 1.28    |
+| monk3          | 0.32    | 0.79    | 0.62    |
+| monk1          | 0.47    | 1.18    | 0.81    |
+| hayes-roth     | 0.67    | 4.10    | 1.23    |
+| monk2          | 0.77    | 5.81    | 2.66    |
+| house-votes-84 | 0.58    | 1.31    | 1.20    |
+| spect          | 1.80    | 5.67    | 5.14    |
+| breast-cancer  | 6.18    | 16.53   | 11.84   |
+| balance-scale  | 3.30    | 15.97   | 7.17    |
+| tic-tac-toe    | 71.50   | 246.28  | 88.11   |
+| car_evaluation | 24.16   | 108.59  | 54.20   |
