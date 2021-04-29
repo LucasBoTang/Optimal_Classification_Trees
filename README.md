@@ -43,7 +43,7 @@ Details about the project report is [here](https://github.com/LucasBoTang/MIP_De
 
 ### Results
 
-All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a memory of 16 GB. Algorithms are implemented in Python 3.7 with Gurobi 9.1 as an optimization solver. The time limit is set to 600 seconds.
+All the tests are conducted on Intel(R) Core(TM) CPU i7-7700HQ @ 2.80GHz and a memory of 16 GB. Algorithms are implemented in [Python 3.7](https://www.python.org/) with [Gurobi 9.1](https://www.gurobi.com/) as an optimization solver. The time limit is set to **600** seconds.
 
 #### Out-of-Sample Prediction Performance for OCT, binOCT, flowOCT, and CART
 | instance       | depth | OCT    | binOCT | flowOCT | CART   |
