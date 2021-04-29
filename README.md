@@ -39,7 +39,7 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 
 Details about the project report is [here](https://github.com/LucasBoTang/MIP_Decision_Tree/blob/main/Report.pdf).
 
-**Attention: The experiment result in the report is old version.**
+**Attention: The experiment results in the report is old version.**
 
 ### Results
 
