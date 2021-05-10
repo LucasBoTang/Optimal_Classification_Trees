@@ -2,20 +2,23 @@
 # coding: utf-8
 # author: Bo Tang
 
+from collections import namedtuple
 import numpy as np
 from scipy import stats
 import gurobipy as gp
 from gurobipy import GRB
+from sklearn import tree
 import dataset
 
 class optimalDecisionTreeClassifier:
     """
     optimal classfication tree
     """
-    def __init__(self, max_depth=3, min_samples_split=2, alpha=0, timelimit=600, output=True):
+    def __init__(self, max_depth=3, min_samples_split=2, alpha=0, warmstart=True, timelimit=600, output=True):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.alpha = alpha
+        self.warmstart = warmstart
         self.timelimit = timelimit
         self.output = output
         self.trained = False
@@ -43,7 +46,9 @@ class optimalDecisionTreeClassifier:
         self.scales[self.scales == 0] = 1
 
         # solve MIP
-        m, a, b, c, d = self._buildMIP(x/self.scales, y)
+        m, a, b, c, d, l = self._buildMIP(x/self.scales, y)
+        if self.warmstart:
+            self.setStart(x, y, a, b, c, d, l)
         m.optimize()
         self.optgap = m.MIPGap
 
@@ -166,7 +171,7 @@ class optimalDecisionTreeClassifier:
         # (5)
         m.addConstrs(d[t] <= d[t//2] for t in self.b_index if t != 1)
 
-        return m, a, b, c, d
+        return m, a, b, c, d, l
 
     def _calBaseline(self, y):
         """
@@ -193,3 +198,100 @@ class optimalDecisionTreeClassifier:
             # min distance
             min_dis.append(np.min(dis) if np.min(dis) else 1)
         return min_dis
+
+    def setStart(self, x, y, a, b, c, d, l):
+        """
+        set warm start from CART
+        """
+        # train with CART
+        if self.min_samples_split > 1:
+            clf = tree.DecisionTreeClassifier(max_depth=self.max_depth, min_samples_split=self.min_samples_split)
+        else:
+            clf = tree.DecisionTreeClassifier(max_depth=self.max_depth)
+        clf.fit(x, y)
+
+        # get splition rules
+        rules = self. _getRules(clf)
+
+        # fix branch node
+        for t in self.b_index:
+            # not split
+            if rules[t].feat is None or rules[t].feat == tree._tree.TREE_UNDEFINED:
+                d[t].start = 0
+                for f in range(self.p):
+                    a[f,t].start = 0
+            # split
+            else:
+                d[t].start = 1
+                for f in range(self.p):
+                    if f == int(rules[t].feat) :
+                        a[f,t].start = 1
+                    else:
+                        a[f,t].start = 0
+
+        # fix leaf nodes
+        for t in self.l_index:
+            # terminate early
+            if rules[t].value is None:
+                l[t].start = int(t % 2)
+                # flows go to right
+                if t % 2:
+                    t_leaf = t
+                    while rules[t].value is None:
+                        t //= 2
+                    for k in self.labels:
+                        if k == np.argmax(rules[t].value):
+                            c[k, t_leaf].start = 1
+                        else:
+                            c[k, t_leaf].start = 0
+                # nothing in left
+                else:
+                    for k in self.labels:
+                        c[k, t].start = 0
+            # terminate at leaf node
+            else:
+                l[t].start = 1
+                for k in self.labels:
+                    if k == np.argmax(rules[t].value):
+                        c[k, t].start = 1
+                    else:
+                        c[k, t].start = 0
+
+    def _getRules(self, clf):
+        """
+        get splition rules
+        """
+        # node index map
+        node_map = {1:0}
+        for t in self.b_index:
+            # terminal
+            node_map[2*t] = -1
+            node_map[2*t+1] = -1
+            # left
+            l = clf.tree_.children_left[node_map[t]]
+            node_map[2*t] = l
+            # right
+            r = clf.tree_.children_right[node_map[t]]
+            node_map[2*t+1] = r
+
+        # rules
+        rule = namedtuple('Rules', ('feat', 'threshold', 'value'))
+        rules = {}
+        # brach nodes
+        for t in self.b_index:
+            i = node_map[t]
+            if i == -1:
+                r = rule(None, None, None)
+            else:
+                r = rule(clf.tree_.feature[i], clf.tree_.threshold[i], clf.tree_.value[i,0])
+            rules[t] = r
+        # leaf nodes
+        for t in self.l_index:
+            i = node_map[t]
+            if i == -1:
+                r = rule(None, None, None)
+            else:
+                r = rule(None, None, clf.tree_.value[i,0])
+            rules[t] = r
+
+        return rules
