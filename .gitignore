@@ -113,7 +113,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 fig/maxflow.pptx
-.idea/misc.xml
-.idea/externalDependencies.xml
-.idea/workspace.xml
-.idea/dictionaries
+.idea/*
