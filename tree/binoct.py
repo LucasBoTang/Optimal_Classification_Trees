@@ -3,7 +3,6 @@
 # author: Bo Tang
 
 from collections import namedtuple
-
 import numpy as np
 from scipy import stats
 import gurobipy as gp

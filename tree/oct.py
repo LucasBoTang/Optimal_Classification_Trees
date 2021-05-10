@@ -8,7 +8,6 @@ from scipy import stats
 import gurobipy as gp
 from gurobipy import GRB
 from sklearn import tree
-import dataset
 
 class optimalDecisionTreeClassifier:
     """
