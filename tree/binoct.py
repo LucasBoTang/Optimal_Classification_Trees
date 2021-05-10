@@ -10,7 +10,7 @@ from gurobipy import GRB
 
 class binOptimalDecisionTreeClassifier:
     """
-    Binary encoding  optimal classfication tree
+    Binary encoding  optimal classification tree
     """
     def __init__(self, max_depth=3, min_samples_split=2, timelimit=600, output=True):
         self.max_depth = max_depth
@@ -54,7 +54,7 @@ class binOptimalDecisionTreeClassifier:
         # get parameters
         self._p = {ind:p[ind].x for ind in p}
 
-        # get splition critera
+        # get splitting criteria
         self.split = {}
         for t in self.b_index:
             for j in range(self.p):
@@ -120,8 +120,8 @@ class binOptimalDecisionTreeClassifier:
         # model sense
         m.modelSense = GRB.MINIMIZE
 
-        # varibles
-        e = m.addVars(self.l_index, self.labels, vtype=GRB.CONTINUOUS, name='e') # leaf node misclassfication
+        # variables
+        e = m.addVars(self.l_index, self.labels, vtype=GRB.CONTINUOUS, name='e') # leaf node misclassified
         f = m.addVars(self.b_index, self.p, vtype=GRB.BINARY, name='f') # splitting feature
         l = m.addVars(self.n, self.l_index, vtype=GRB.CONTINUOUS, name='z') # leaf node assignment
         p = m.addVars(self.l_index, self.labels, vtype=GRB.BINARY, name='p') # node prediction
@@ -144,7 +144,7 @@ class binOptimalDecisionTreeClassifier:
                 for t in self.b_index:
                     expr = M * f[t,j]
                     expr += gp.quicksum(gp.quicksum(l[i,s]
-                                                    for s in self. _getLeftLeafs(t))
+                                                    for s in self. _getLeftLeaves(t))
                                         for i in range(self.n) if lb <= x[i,j] <= ub)
                     num = 0
                     for i, ind in enumerate(b.t):
@@ -160,7 +160,7 @@ class binOptimalDecisionTreeClassifier:
                 for t in self.b_index:
                     expr = M * f[t,j]
                     expr += gp.quicksum(gp.quicksum(l[i,s]
-                                                    for s in self. _getRightLeafs(t))
+                                                    for s in self. _getRightLeaves(t))
                                         for i in range(self.n) if lb <= x[i,j] <= ub)
                     for i, ind in enumerate(b.t):
                         if ind == 1:
@@ -172,11 +172,11 @@ class binOptimalDecisionTreeClassifier:
             m.addConstrs(M * f[t,j]
                          +
                          gp.quicksum(gp.quicksum(l[i,s]
-                                                 for s in self. _getLeftLeafs(t))
+                                                 for s in self. _getLeftLeaves(t))
                                      for i in range(self.n) if self.thresholds[j][-1] < x[i,j])
                          +
                          gp.quicksum(gp.quicksum(l[i,s]
-                                                 for s in self. _getRightLeafs(t))
+                                                 for s in self. _getRightLeaves(t))
                                      for i in range(self.n) if x[i,j] < self.thresholds[j][0])
                          <=
                          M
@@ -236,7 +236,7 @@ class binOptimalDecisionTreeClassifier:
 
         return bins
 
-    def _getLeftLeafs(self, t):
+    def _getLeftLeaves(self, t):
         """
         get leaves under the left branch
         """
@@ -250,7 +250,7 @@ class binOptimalDecisionTreeClassifier:
                 tp //= 2
         return ll_index
 
-    def _getRightLeafs(self, t):
+    def _getRightLeaves(self, t):
         """
         get leaves under the left branch
         """

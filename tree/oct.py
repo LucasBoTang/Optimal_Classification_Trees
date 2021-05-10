@@ -11,7 +11,7 @@ from sklearn import tree
 
 class optimalDecisionTreeClassifier:
     """
-    optimal classfication tree
+    optimal classification tree
     """
     def __init__(self, max_depth=3, min_samples_split=2, alpha=0, warmstart=True, timelimit=600, output=True):
         self.max_depth = max_depth
@@ -47,7 +47,7 @@ class optimalDecisionTreeClassifier:
         # solve MIP
         m, a, b, c, d, l = self._buildMIP(x/self.scales, y)
         if self.warmstart:
-            self.setStart(x, y, a, b, c, d, l)
+            self.setStart(x, y, a, c, d, l)
         m.optimize()
         self.optgap = m.MIPGap
 
@@ -86,7 +86,6 @@ class optimalDecisionTreeClassifier:
 
         return np.array(y_pred)
 
-
     def _buildMIP(self, x, y):
         """
         build MIP formulation for Optimal Decision Tree
@@ -105,14 +104,14 @@ class optimalDecisionTreeClassifier:
         # model sense
         m.modelSense = GRB.MINIMIZE
 
-        # varibles
+        # variables
         a = m.addVars(self.p, self.b_index, vtype=GRB.BINARY, name='a') # splitting feature
         b = m.addVars(self.b_index, vtype=GRB.CONTINUOUS, name='b') # splitting threshold
         c = m.addVars(self.labels, self.l_index, vtype=GRB.BINARY, name='c') # node prediction
         d = m.addVars(self.b_index, vtype=GRB.BINARY, name='d') # splitting option
         z = m.addVars(self.n, self.l_index, vtype=GRB.BINARY, name='z') # leaf node assignment
         l = m.addVars(self.l_index, vtype=GRB.BINARY, name='l') # leaf node activation
-        L = m.addVars(self.l_index, vtype=GRB.CONTINUOUS, name='L') # leaf node misclassfication
+        L = m.addVars(self.l_index, vtype=GRB.CONTINUOUS, name='L') # leaf node misclassified
         M = m.addVars(self.labels, self.l_index, vtype=GRB.CONTINUOUS, name='M') # leaf node samples with label
         N = m.addVars(self.l_index, vtype=GRB.CONTINUOUS, name='N') # leaf node samples
 
@@ -198,7 +197,7 @@ class optimalDecisionTreeClassifier:
             min_dis.append(np.min(dis) if np.min(dis) else 1)
         return min_dis
 
-    def setStart(self, x, y, a, b, c, d, l):
+    def setStart(self, x, y, a, c, d, l):
         """
         set warm start from CART
         """
@@ -209,7 +208,7 @@ class optimalDecisionTreeClassifier:
             clf = tree.DecisionTreeClassifier(max_depth=self.max_depth)
         clf.fit(x, y)
 
-        # get splition rules
+        # get splitting rules
         rules = self._getRules(clf)
 
         # fix branch node
@@ -258,7 +257,7 @@ class optimalDecisionTreeClassifier:
 
     def _getRules(self, clf):
         """
-        get splition rules
+        get splitting rules
         """
         # node index map
         node_map = {1:0}
@@ -276,7 +275,7 @@ class optimalDecisionTreeClassifier:
         # rules
         rule = namedtuple('Rules', ('feat', 'threshold', 'value'))
         rules = {}
-        # brach nodes
+        # branch nodes
         for t in self.b_index:
             i = node_map[t]
             if i == -1:

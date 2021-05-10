@@ -8,7 +8,7 @@ import gurobipy as gp
 from scipy import stats
 from sklearn import tree
 
-class maxFlowOptimalDecisionTreeClassifier():
+class maxFlowOptimalDecisionTreeClassifier:
     def __init__(self, max_depth, alpha=0, warmstart=True, timelimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
@@ -18,7 +18,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         self.trained = False
         self.optgap = None
 
-        # intialize the tree
+        # initialize the tree
         self.B = list(range(2 ** self.max_depth - 1))
         self.T = list(range(2 ** self.max_depth - 1, 2 ** (self.max_depth + 1) - 1))
         self.A = [self._tree_ancestor(n) for n in self.B + self.T]
@@ -53,7 +53,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         """
         build MIP formulation for Max-Flow Optimal Decision Tree
         """
-        # intialize the master problem
+        # initialize the master problem
         m = gp.Model('m')
         m.Params.outputFlag = self.output
         m.Params.LogToConsole = self.output
@@ -63,9 +63,9 @@ class maxFlowOptimalDecisionTreeClassifier():
 
         # add decision variables
         b = m.addVars(self.B, self.F, name='b', vtype=gp.GRB.BINARY)
-        w = m.addVars(self.B + self.T, self.K, name = 'w', vtype=gp.GRB.BINARY)
-        g = m.addVars(self.I, name = 'g', lb = 0, ub = 1, vtype=gp.GRB.CONTINUOUS)
-        p = m.addVars(self.B + self.T, name = 'P', vtype=gp.GRB.BINARY)
+        w = m.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
+        g = m.addVars(self.I, name='g', lb=0, ub=1, vtype=gp.GRB.CONTINUOUS)
+        p = m.addVars(self.B + self.T, name='p', vtype=gp.GRB.BINARY)
 
         # add constraints
         m.addConstrs((gp.quicksum(b[n, f] for f in self.F)
@@ -73,7 +73,7 @@ class maxFlowOptimalDecisionTreeClassifier():
                       + gp.quicksum(p[m] for m in self.A[n])
                       == 1
                       for n in self.B),
-                      name = 'branching_nodes')
+                      name='branching_nodes')
 
         m.addConstrs((p[n]
                       + gp.quicksum(p[m] for m in self.A[n])
@@ -83,7 +83,7 @@ class maxFlowOptimalDecisionTreeClassifier():
 
         m.addConstrs((gp.quicksum(w[n, k] for k in self.K) == p[n]
                                   for n in self.B + self.T),
-                      name = 'label_assignment')
+                      name='label_assignment')
 
         # set objective function
         baseline = self._calBaseline(y)
@@ -135,7 +135,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         """
         build MIP formulation for Max-Flow Optimal Decision Tree with min-max method
         """
-        # intialize the master problem
+        # initialize the master problem
         m = gp.Model('m')
         m.Params.outputFlag = self.output
         m.Params.LogToConsole = self.output
@@ -148,7 +148,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         w = m.addVars(self.B + self.T, self.K, name='w', vtype=gp.GRB.BINARY)
         p = m.addVars(self.B + self.T, name='p', vtype=gp.GRB.BINARY)
         u = m.addVars(self.I, name='u', vtype=gp.GRB.CONTINUOUS)
-        theta = m.addVar(name = 'theta', lb = - gp.GRB.INFINITY, ub = len(y)*1000, vtype = gp.GRB.CONTINUOUS)
+        theta = m.addVar(name='theta', lb=-gp.GRB.INFINITY, ub=len(y)*1000, vtype=gp.GRB.CONTINUOUS)
 
         # add constraints
         m.addConstrs((gp.quicksum(b[n, f] for f in self.F)
@@ -220,7 +220,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         """
         build MIP formulation for Max-Flow Optimal Decision Tree with min-max method
         """
-        # intialize the master problem
+        # initialize the master problem
         m = gp.Model('m')
         m.Params.outputFlag = self.output
         m.Params.LogToConsole = self.output
@@ -314,7 +314,7 @@ class maxFlowOptimalDecisionTreeClassifier():
 
     def _tree_ancestor(self, node):
         """
-        find the acesestor of the given node in the tree
+        find the accessor of the given node in the tree
         """
         ancestor = []
         parent = self._tree_parent(node)
@@ -508,7 +508,7 @@ class maxFlowOptimalDecisionTreeClassifier():
             rhs = model._N - len(miss)
             if t_val > rhs and counter == 0:
                 if rhs > 0:
-                    choice = np.random.choice(arr, rhs, replace = False)
+                    choice = np.random.choice(arr, rhs, replace=False)
                     model.cbLazy(
                         model._t <= gp.quicksum(model._g[i] for i in choice) + gp.quicksum(model._g[i] for i in miss))
                 else:
@@ -523,7 +523,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         clf = tree.DecisionTreeClassifier(max_depth=self.max_depth)
         clf.fit(x, y)
 
-        # get splition rules
+        # get splitting rules
         rules = self._getRules(clf)
 
         # fix branch node
@@ -574,7 +574,7 @@ class maxFlowOptimalDecisionTreeClassifier():
 
     def _getRules(self, clf):
         """
-        get splition rules
+        get splitting rules
         """
         # node index map
         node_map = {0:0}
@@ -592,7 +592,7 @@ class maxFlowOptimalDecisionTreeClassifier():
         # rules
         rule = namedtuple('Rules', ('feat', 'threshold', 'value'))
         rules = {}
-        # brach nodes
+        # branch nodes
         for n in self.B:
             i = node_map[n]
             if i == -1:
