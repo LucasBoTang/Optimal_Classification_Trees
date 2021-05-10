@@ -21,7 +21,7 @@ This project aims to better understand the computational and prediction performa
 
 With the ideas come from Bertsimas and Paskov (2020), we also implemented a stable classification tree (SOCT) formulation incorporating the training and validation set split decision into the decision tree learning processes. The model can be regardded as training the decision tree on the "hardest" sub-set of the training dataset. The SOCT is solved using a robust optimization method and a cutting plane method.
 
-- Bertsimas, D. and Paskov, I. (2020).  Stable regression:  On the power of optimization over randomizationin training regression problems.Journal of Machine Learning Research, 21:1–25
+- Bertsimas, D., & Paskov, I. (2020). Stable Regression: On the Power of Optimization over Randomization in Training Regression Problems. Journal of Machine Learning Research, 21, 1-25.
 
 ### Parameters
 
