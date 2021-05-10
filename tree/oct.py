@@ -47,7 +47,7 @@ class optimalDecisionTreeClassifier:
         # solve MIP
         m, a, b, c, d, l = self._buildMIP(x/self.scales, y)
         if self.warmstart:
-            self.setStart(x, y, a, c, d, l)
+            self._setStart(x, y, a, c, d, l)
         m.optimize()
         self.optgap = m.MIPGap
 
@@ -197,7 +197,7 @@ class optimalDecisionTreeClassifier:
             min_dis.append(np.min(dis) if np.min(dis) else 1)
         return min_dis
 
-    def setStart(self, x, y, a, c, d, l):
+    def _setStart(self, x, y, a, c, d, l):
         """
         set warm start from CART
         """

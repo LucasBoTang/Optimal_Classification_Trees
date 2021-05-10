@@ -42,7 +42,7 @@ class maxFlowOptimalDecisionTreeClassifier:
         # solve MIP
         m, b, p, w = self._buildMIP(x, y)
         if self.warmstart:
-            self.setStart(x, y, b, p, w)
+            self._setStart(x, y, b, p, w)
         m.optimize(self._min_cut)
         self.optgap = m.MIPGap
 
@@ -515,7 +515,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                     choice = np.random.choice(miss, model._N, replace=False)
                     model.cbLazy(model._t <= gp.quicksum(model._g[i] for i in choice))
 
-    def setStart(self, x, y, b, p, w):
+    def _setStart(self, x, y, b, p, w):
         """
         set warm start from CART
         """
