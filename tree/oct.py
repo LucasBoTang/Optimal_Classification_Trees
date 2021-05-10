@@ -223,7 +223,7 @@ class optimalDecisionTreeClassifier:
             else:
                 d[t].start = 1
                 for f in range(self.p):
-                    if f == int(rules[t].feat) :
+                    if f == int(rules[t].feat):
                         a[f,t].start = 1
                     else:
                         a[f,t].start = 0
