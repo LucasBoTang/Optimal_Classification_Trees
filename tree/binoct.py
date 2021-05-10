@@ -7,14 +7,16 @@ import numpy as np
 from scipy import stats
 import gurobipy as gp
 from gurobipy import GRB
+from sklearn import tree
 
 class binOptimalDecisionTreeClassifier:
     """
     Binary encoding  optimal classification tree
     """
-    def __init__(self, max_depth=3, min_samples_split=2, timelimit=600, output=True):
+    def __init__(self, max_depth=3, min_samples_split=2, warmstart=True, timelimit=600, output=True):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
+        self.warmstart = warmstart
         self.timelimit = timelimit
         self.output = output
         self.trained = False
@@ -48,6 +50,8 @@ class binOptimalDecisionTreeClassifier:
 
         # solve MIP
         m, e, f, l, p, q = self._buildMIP(x, y)
+        if self.warmstart:
+            self._setStart(x, y, f, p)
         m.optimize()
         self.optgap = m.MIPGap
 
@@ -211,6 +215,7 @@ class binOptimalDecisionTreeClassifier:
                     threshold.append((x[prev_i,j] + x[i,j]) / 2)
                     prev_label = y[i]
                 prev_i = i
+            #threshold = [np.min(x[:,j])-1] + threshold + [np.max(x[:,j])+1]
             thresholds.append(threshold)
         return thresholds
 
@@ -270,3 +275,91 @@ class binOptimalDecisionTreeClassifier:
         """
         mode = stats.mode(y)[0][0]
         return np.sum(y == mode)
+
+    def _setStart(self, x, y, f, p):
+        """
+        set warm start from CART
+        """
+        # train with CART
+        if self.min_samples_split > 1:
+            clf = tree.DecisionTreeClassifier(max_depth=self.max_depth, min_samples_split=self.min_samples_split)
+        else:
+            clf = tree.DecisionTreeClassifier(max_depth=self.max_depth)
+        clf.fit(x, y)
+
+        # get splitting rules
+        rules = self._getRules(clf)
+
+        # fix branch node
+        for t in self.b_index:
+            # not split
+            if rules[t].feat is None or rules[t].feat == tree._tree.TREE_UNDEFINED:
+                pass
+            # split
+            else:
+                for j in range(self.p):
+                    if j == int(rules[t].feat):
+                        f[t,j].start = 1
+                    else:
+                        f[t,j].start = 0
+
+        # fix leaf nodes
+        for t in self.l_index:
+            # terminate early
+            if rules[t].value is None:
+                # flows go to right
+                if t % 2:
+                    t_leaf = t
+                    while rules[t].value is None:
+                        t //= 2
+                    for k in self.labels:
+                        if k == np.argmax(rules[t].value):
+                            p[t_leaf, k].start = 1
+                        else:
+                            p[t_leaf, k].start = 0
+            # terminate at leaf node
+            else:
+                for k in self.labels:
+                    if k == np.argmax(rules[t].value):
+                        p[t, k].start = 1
+                    else:
+                        p[t, k].start = 0
+
+    def _getRules(self, clf):
+        """
+        get splitting rules
+        """
+        # node index map
+        node_map = {1:0}
+        for t in self.b_index:
+            # terminal
+            node_map[2*t] = -1
+            node_map[2*t+1] = -1
+            # left
+            l = clf.tree_.children_left[node_map[t]]
+            node_map[2*t] = l
+            # right
+            r = clf.tree_.children_right[node_map[t]]
+            node_map[2*t+1] = r
+
+        # rules
+        rule = namedtuple('Rules', ('feat', 'threshold', 'value'))
+        rules = {}
+        # branch nodes
+        for t in self.b_index:
+            i = node_map[t]
+            if i == -1:
+                r = rule(None, None, None)
+            else:
+                r = rule(clf.tree_.feature[i], clf.tree_.threshold[i], clf.tree_.value[i,0])
+            rules[t] = r
+        # leaf nodes
+        for t in self.l_index:
+            i = node_map[t]
+            if i == -1:
+                r = rule(None, None, None)
+            else:
+                r = rule(None, None, clf.tree_.value[i,0])
+            rules[t] = r
+
+        return rules
