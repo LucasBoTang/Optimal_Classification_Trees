@@ -210,7 +210,7 @@ class optimalDecisionTreeClassifier:
         clf.fit(x, y)
 
         # get splition rules
-        rules = self. _getRules(clf)
+        rules = self._getRules(clf)
 
         # fix branch node
         for t in self.b_index:
