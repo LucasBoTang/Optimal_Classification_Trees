@@ -23,6 +23,15 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 
 - Bertsimas, D. and Paskov, I. (2020).  Stable regression:  On the power of optimization over randomizationin training regression problems.Journal of Machine Learning Research, 21:1–25
 
+### Parameters
+
+- **max_depth:** The maximum depth of the tree.
+- **min_samples_split:** The minimum number of samples required to split an internal node.
+- **alpha:** The penalty term coefficients for the number of splitting nodes.
+- **warmstart**: Warm start with skLearn decision tree or not.
+- **timelimit**: The time limit for running the MIP solver.
+- **output**: Show the optimizing output or not.
+
 ### Data
 
 - [Balance Scale](https://archive.ics.uci.edu/ml/datasets/balance+scale)
