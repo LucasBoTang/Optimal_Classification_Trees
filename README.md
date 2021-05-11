@@ -1,4 +1,4 @@
-# Optimal Decision Tree
+# Optimal Classification Tree
 
 <p align="center"><img width="100%" src="fig/dt.jpg" /></p>
  
