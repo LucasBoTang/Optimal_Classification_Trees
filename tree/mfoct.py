@@ -9,7 +9,7 @@ from scipy import stats
 from sklearn import tree
 
 class maxFlowOptimalDecisionTreeClassifier:
-    def __init__(self, max_depth, alpha=0, warmstart=True, timelimit=600, output=True):
+    def __init__(self, max_depth=3, alpha=0, warmstart=True, timelimit=600, output=True):
         self.max_depth = max_depth
         self.alpha = alpha
         self.warmstart = warmstart
