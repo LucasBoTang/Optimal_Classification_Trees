@@ -10,6 +10,7 @@ This project aims to better understand the computational and prediction performa
 
 * [Python 3.7](https://www.python.org/)
 * [Gurobi 9.1](https://www.gurobi.com/)
+* [scikit-learn 0.24.2](https://scikit-learn.org/)
 
 ### MIP Models
 
