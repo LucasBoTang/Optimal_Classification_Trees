@@ -11,12 +11,13 @@ This project aims to better understand the computational and prediction performa
 * [Python 3.7](https://www.python.org/)
 * [Gurobi 9.1](https://www.gurobi.com/)
 * [scikit-learn 0.24.2](https://scikit-learn.org/)
+* [SciPy 1.6.3](https://www.scipy.org/)
 
 ### MIP Models
 
 - [Optimal Classification Trees (OCT)](https://link.springer.com/article/10.1007/s10994-017-5633-9) - Bertsimas, D., & Dunn, J. (2017). Optimal classification trees. Machine Learning, 106(7), 1039-1082.
 - [Optimal Classification Tree with Binary Encoding (binOCT)](https://ojs.aaai.org//index.php/AAAI/article/view/3978) - Verwer, S., & Zhang, Y. (2019). Learning optimal classification trees using a binary linear program formulation. In Proceedings of the AAAI Conference on Artificial Intelligence (Vol. 33, No. 01, pp. 1625-1632).
-- [Max-Flow Optimal Classification Trees (flowOCT)](http://www.optimization-online.org/DB_HTML/2021/01/8220.html) - Aghaei, S., Gómez, A., & Vayanos, P. (2021). Strong Optimal Classification Trees. arXiv preprint arXiv:2103.15965.
+- [Max-Flow Optimal Classification Trees (flowOCT)](http://www.optimization-online.org/DB_HTML/2021/01/8220.html) - Aghaei, S., Gómez, A., & Vayanos, P. (2021). Strong optimal classification trees. arXiv preprint arXiv:2103.15965.
 
 ### Stable Classification Tree
 
@@ -32,6 +33,15 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 - **warmstart**: Warm start with skLearn decision tree or not.
 - **timelimit**: The time limit for running the MIP solver.
 - **output**: Show the optimizing output or not.
+
+### Sample Code
+
+```
+import tree as miptree
+octree = miptree.optimalDecisionTreeClassifier(max_depth=3, min_samples_split=2, alpha=0.01, warmstart=True, timelimit=600, output=True)
+octree.fit(x_train, y_train)
+y_test_pred = octree.predict(x_test)
+```
 
 ### Data
 
