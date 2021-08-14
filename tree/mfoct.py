@@ -354,17 +354,17 @@ class maxFlowOptimalDecisionTreeClassifier:
             g_val = model.cbGetSolution(model._g)
 
             for i in model._I:
-                S, dir = [], []
+                S, branch = [], []
                 n = 0
 
                 while (p_val[n] <= 0.9):
                     S.append(n)
                     if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
                         n = 2 * n + 1
-                        dir.append(0)
+                        branch.append(0)
                     elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
                         n = 2 * n + 2
-                        dir.append(1)
+                        branch.append(1)
                     else:
                         raise ValueError
 
@@ -376,7 +376,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i,f] == 1 - dir[idx]) +
+                                                 if model._X[i,f] == 1 - branch[idx]) +
                                      gp.quicksum(model._b[n, f] for f in model._F) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
@@ -387,7 +387,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                                 if model._X[i, f] == 1 - branch[idx]) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
                                                  if model._Y[i] == k)
@@ -406,17 +406,17 @@ class maxFlowOptimalDecisionTreeClassifier:
             u_val = model.cbGetSolution(model._u)
 
             for i in model._I:
-                S, dir = [], []
+                S, branch = [], []
                 n = 0
 
                 while (n in model._B) and (p_val[n] == 0):
                     S.append(n)
                     if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
                         n = 2 * n + 1
-                        dir.append(0)
+                        branch.append(0)
                     elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
                         n = 2 * n + 2
-                        dir.append(1)
+                        branch.append(1)
 
                 S.append(n)
 
@@ -427,7 +427,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                                 if model._X[i, f] == 1 - branch[idx]) +
                                      gp.quicksum(model._b[n, f] for f in model._F) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
@@ -438,7 +438,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                                 if model._X[i, f] == 1 - branch[idx]) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
                                                  if model._Y[i] == k)
@@ -461,17 +461,17 @@ class maxFlowOptimalDecisionTreeClassifier:
             counter = 0
 
             for i in model._I:
-                S, dir = [], []
+                S, branch = [], []
                 n = 0
 
                 while (p_val[n] <= 0.9):
                     S.append(n)
                     if np.sum([b_val[n, f] for f in model._F if model._X[i, f] <= 1e-5]) >= 0.999:
                         n = 2 * n + 1
-                        dir.append(0)
+                        branch.append(0)
                     elif np.sum([b_val[n, f] for f in model._F if model._X[i, f] >= 0.999]) >= 0.999:
                         n = 2 * n + 2
-                        dir.append(1)
+                        branch.append(1)
                     else:
                         raise ValueError('Features should be binary')
                 S.append(n)
@@ -488,7 +488,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i,f] == 1 - dir[idx]) +
+                                                 if model._X[i,f] == 1 - branch[idx]) +
                                      gp.quicksum(model._b[n, f] for f in model._F) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
@@ -499,7 +499,7 @@ class maxFlowOptimalDecisionTreeClassifier:
                                      gp.quicksum(model._b[val, f]
                                                  for idx, val in enumerate(S[:-1])
                                                  for f in model._F
-                                                 if model._X[i, f] == 1 - dir[idx]) +
+                                                 if model._X[i, f] == 1 - branch[idx]) +
                                      gp.quicksum(model._w[j, k]
                                                  for j in S for k in model._K
                                                  if model._Y[i] == k)
