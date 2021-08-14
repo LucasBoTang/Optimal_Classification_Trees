@@ -16,40 +16,38 @@ def loadData(dataname):
         x, y = loadBalanceScale()
         return x, y
     # breast-cancer
-    elif dataname == 'breast-cancer':
+    if dataname == 'breast-cancer':
         x, y = loadBreastCancer()
         return x, y
     # car-evaluation
-    elif dataname == 'car-evaluation':
+    if dataname == 'car-evaluation':
         x, y = loadCarEvaluation()
         return x, y
     # hayes-roth
-    elif dataname == 'hayes-roth':
+    if dataname == 'hayes-roth':
         x, y = loadHayesRoth()
         return x, y
     # house-votes-84
-    elif dataname == 'house-votes-84':
+    if dataname == 'house-votes-84':
         x, y = loadHouseVotes84()
         return x, y
     # soybean-small
-    elif dataname == 'soybean-small':
+    if dataname == 'soybean-small':
         x, y = loadSoybean()
         return x, y
     # spect
-    elif dataname == 'spect':
+    if dataname == 'spect':
         x, y = loadSpect()
         return x, y
     # tic-tac-toe
-    elif dataname == 'tic-tac-toe':
+    if dataname == 'tic-tac-toe':
         x, y = loadTicTacToe()
         return x, y
     # monks
-    elif dataname[:5] == 'monks':
+    if dataname[:5] == 'monks':
         x, y = loadMonks(dataname)
         return x, y
-    # catch error
-    else:
-        raise NameError('No dataset "{}".'.format(dataname))
+    raise NameError('No dataset "{}".'.format(dataname))
 
 def oneHot(x):
     """

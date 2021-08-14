@@ -307,10 +307,9 @@ class maxFlowOptimalDecisionTreeClassifier:
         """
         if node == 0:
             return None
-        elif node % 2 == 1:
+        if node % 2 == 1:
             return int(node // 2)
-        else:
-            return int(node // 2) - 1
+        return int(node // 2) - 1
 
     def _tree_ancestor(self, node):
         """
