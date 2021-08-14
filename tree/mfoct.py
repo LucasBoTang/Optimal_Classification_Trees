@@ -281,7 +281,8 @@ class maxFlowOptimalDecisionTreeClassifier:
         """
         model prediction
         """
-        assert self.trained, 'This binOptimalDecisionTreeClassifier instance is not fitted yet.'
+        if not self.trained:
+            raise AssertionError('This binOptimalDecisionTreeClassifier instance is not fitted yet.')
 
         pred = []
         for val in x:
