@@ -76,7 +76,8 @@ class binOptimalDecisionTreeClassifier:
         """
         model prediction
         """
-        assert self.trained, 'This binOptimalDecisionTreeClassifier instance is not fitted yet.'
+        if not self.trained:
+            raise AssertionError('This binOptimalDecisionTreeClassifier instance is not fitted yet.')
 
         # delete columns
         x = np.delete(x, self.delete_cols, axis=1)

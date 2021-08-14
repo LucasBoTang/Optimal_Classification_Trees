@@ -156,7 +156,8 @@ def loadMonks(dataname):
     load Monks dataset
     """
     _, index = dataname.split('-')
-    assert index in ['1', '2', '3'], 'No dataset ' + dataname
+    if index not in ['1', '2', '3']:
+        raise AssertionError('No dataset ' + dataname)
     df_train = pd.read_csv('./data/monks/monks-{}.train'.format(index), header=None, delimiter=' ')
     df_test = pd.read_csv('./data/monks/monks-{}.test'.format(index), header=None, delimiter=' ')
     x_train, y_train = df_train[[2,3,4,5,6,7]], df_train[1]

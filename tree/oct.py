@@ -63,7 +63,8 @@ class optimalDecisionTreeClassifier:
         """
         model prediction
         """
-        assert self.trained, 'This optimalDecisionTreeClassifier instance is not fitted yet.'
+        if not self.trained:
+            raise AssertionError('This optimalDecisionTreeClassifier instance is not fitted yet.')
 
         # leaf label
         labelmap = {}
