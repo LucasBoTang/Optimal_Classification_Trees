@@ -49,7 +49,7 @@ class binOptimalDecisionTreeClassifier:
         self.bin_num = int(np.ceil(np.log2(max([len(threshold) for threshold in self.thresholds]))))
 
         # solve MIP
-        m, e, f, l, p, q = self._buildMIP(x, y)
+        m, _, f, _, p, q = self._buildMIP(x, y)
         if self.warmstart:
             self._setStart(x, y, f, p)
         m.optimize()
