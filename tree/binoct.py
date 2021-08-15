@@ -270,7 +270,8 @@ class binOptimalDecisionTreeClassifier:
                 tp //= 2
         return rl_index
 
-    def _calBaseline(self, y):
+    @staticmethod
+    def _calBaseline(y):
         """
         obtain baseline accuracy by simply predicting the most popular class
         """
