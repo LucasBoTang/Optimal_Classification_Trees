@@ -172,14 +172,16 @@ class optimalDecisionTreeClassifier:
 
         return m, a, b, c, d, l
 
-    def _calBaseline(self, y):
+    @staticmethod
+    def _calBaseline(y):
         """
         obtain baseline accuracy by simply predicting the most popular class
         """
         mode = stats.mode(y)[0][0]
         return np.sum(y == mode)
 
-    def _calMinDist(self, x):
+    @staticmethod
+    def _calMinDist(x):
         """
         get the smallest non-zero distance of features
         """

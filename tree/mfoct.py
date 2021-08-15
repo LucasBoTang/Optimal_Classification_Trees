@@ -296,13 +296,15 @@ class maxFlowOptimalDecisionTreeClassifier:
             pred.append(self.labels[n])
         return np.array(pred)
 
-    def _tree_children(self, node):
+    @staticmethod
+    def _tree_children(node):
         """
         get left and right children of node in the tree
         """
         return 2 * node + 1, 2 * node + 2
 
-    def _tree_parent(self, node):
+    @staticmethod
+    def _tree_parent(node):
         """
         get parent of node in the tree
         """
@@ -335,7 +337,8 @@ class maxFlowOptimalDecisionTreeClassifier:
         self.branches = {n: f for n in self.B for f in self.F if b_val[n,f] >= 0.999}
         self.labels = {n: k for n in self.B + self.T for k in self.K if w_val[n, k] >= 0.999}
 
-    def _calBaseline(self, y):
+    @staticmethod
+    def _calBaseline(y):
         """
         obtain baseline accuracy by simply predicting the most popular class
         """
