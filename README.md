@@ -36,7 +36,7 @@ With the ideas come from Bertsimas and Paskov (2020), we also implemented a stab
 
 ### Sample Code
 
-```
+```python
 import tree as miptree
 octree = miptree.optimalDecisionTreeClassifier(max_depth=3, min_samples_split=2, alpha=0.01, warmstart=True, timelimit=600, output=True)
 octree.fit(x_train, y_train)
